@@ -235,24 +235,25 @@ dcsys <- read_csv("clean/DC_manual_download_2021-03-05.csv") %>%
 # Combine U.S. and D.C. SDWIS files 
 allsdwis_dc <- bind_rows(allsdwis, dcsys)
 
-# get list of PWS in UCMR 
+# Get list of PWS in UCMR 
 sdwis_in_ucmr <- allsdwis_dc %>% filter(PWSID %in% ucmr_detcode$PWSID)
 
 # check by JML
 n_distinct(sdwis_in_ucmr$PWSID) == n_distinct(ucmr_detcode$PWSID) # all in SDWIS
 
-
-#how many UCMR PWSs have city served information?
+# How many UCMR water systems have city served information?
+# 58% (n=2794) have city served
 sdwis_in_ucmr %>% 
   group_by(.) %>%
   summarize(n_sys_wo_cityserved = length(unique(PWSID[which(is.na(CITY_SERVED))])),
             n_sys_w_cityserved = length(unique(PWSID[which(!is.na(CITY_SERVED))])),
             perc_sys_wo_cityserved = n_sys_wo_cityserved/n()*100, 
             perc_sys_w_cityserved = n_sys_w_cityserved/n()*100)
-#42%
 
-### for matching FIPS/state abb only data with county names 
-#add converter for state abbreviations to full state name
+# stateabbnamekey -------------------------------------------------------------
+
+# For matching FIPS/state abb only data with county names 
+# Add converter for state abbreviations to full state name
 
 add_dc <- data.frame("stateabb" = "DC",
                      "fullstate" = "District of Columbia",
@@ -266,19 +267,15 @@ stateabbnamekey <- stateabbnamekey %>%
          fullstate_lower = tolower(state.name))  %>% 
   bind_rows(add_dc)
 
-
-
-
 ################################################################################
 #  2. LOAD ACS COUNTY LEVEL DEMOGRAPHICS  ####
 ################################################################################
 
-
 #get demographic information for all counties
-county14socraw <- read.csv("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/2014 5yr/ACS_14_5YR_DP02_with_ann.csv")
-county14ecoraw <- read.csv("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/2014 5yr/ACS_14_5YR_DP03_with_ann.csv")
-county14demraw <- read.csv("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/2014 5yr/ACS_14_5YR_DP05_with_ann.csv")
-county14tenureraw <- read.csv("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/2014 5yr/ACS_14_5YR_B25003_with_ann.csv")
+county14socraw <- read.csv("raw/2014 5yr/ACS_14_5YR_DP02_with_ann.csv")
+county14ecoraw <- read.csv("raw/2014 5yr/ACS_14_5YR_DP03_with_ann.csv")
+county14demraw <- read.csv("raw/2014 5yr/ACS_14_5YR_DP05_with_ann.csv")
+county14tenureraw <- read.csv("raw/2014 5yr/ACS_14_5YR_B25003_with_ann.csv")
 
 #scrape just EJ vars and rename (based on ACS documentation)
 county14soc <- county14socraw[2:nrow(county14socraw), c("GEO.id", "GEO.id2", "GEO.display.label", "HC03_VC95", "HC03_VC142", "HC03_VC173")] %>%
@@ -339,7 +336,7 @@ checkcols_df <- bind_rows(checkcols_list) %>%
 #  2b. SUPPLEMENTAL POVERTY MEASURE  ####
 ################################################################################
 
-mdi_17 <- read_xls("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/Multidimensional Deprivation Index Rates/county-level-mdi-rates-2017.xls") %>% 
+mdi_17 <- read_xls("raw/county-level-mdi-rates-2017.xls") %>% 
   filter(!is.na(county))
 # 3 counties get "X" -- X = Estimate suppresed due to data collection issues 
 # this affects 7 of our UCMR systems ("DE0000552" "DE0000564" "DE0000614" 
@@ -447,13 +444,13 @@ stopifnot(!is.na(ucmrcounties_fips))
 
 
 # read in TRI Basic Data File
-tri_basic10 <- read_csv("../Data/TRI data/basic data file/TRI_2010_US.csv")
-tri_basic11 <- read_csv("../Data/TRI data/basic data file/TRI_2011_US.csv")
-tri_basic12 <- read_csv("../Data/TRI data/basic data file/TRI_2012_US.csv")
-tri_basic13 <- read_csv("../Data/TRI data/basic data file/TRI_2013_US.csv")
-tri_basic14 <- read_csv("../Data/TRI data/basic data file/TRI_2014_US.csv") %>% 
+tri_basic10 <- read_csv("raw/TRI/TRI_2010_US.csv")
+tri_basic11 <- read_csv("raw/TRI/TRI_2011_US.csv")
+tri_basic12 <- read_csv("raw/TRI/TRI_2012_US.csv")
+tri_basic13 <- read_csv("raw/TRI/TRI_2013_US.csv")
+tri_basic14 <- read_csv("raw/TRI/TRI_2014_US.csv") %>% 
   mutate(`10. BIA` = as.numeric(`10. BIA`))
-tri_basic15 <- read_csv("../Data/TRI data/basic data file/TRI_2015_US.csv") %>% 
+tri_basic15 <- read_csv("raw/TRI/TRI_2015_US.csv") %>% 
   mutate(`9. ZIP` = as.character(`9. ZIP`), 
          `15. PARENT CO DB NUM` = as.character(`15. PARENT CO DB NUM`)) # added AM 11-25-22
 
@@ -489,12 +486,12 @@ tri_basic15 <- NA
  
 # read in TRI R and A download data
 # has to read in in order to get fips code
-tri_raw10 <- read_csv("../Data/TRI data/originals/Downloaded 2020-07-24/481818639_2010.CSV")
-tri_raw11 <- read_csv("../Data/TRI data/originals/Downloaded 2020-07-24/481838923_2011.CSV")
-tri_raw12 <- read_csv("../Data/TRI data/originals/Downloaded 2020-07-24/481847511_2012.CSV")
-tri_raw13 <- read_csv("../Data/TRI data/originals/Downloaded 2020-07-24/481855955_2013.CSV")
-tri_raw14 <- read_csv("../Data/TRI data/originals/Downloaded 2020-07-24/481864670_2014.CSV")
-tri_raw15 <- read_csv("../Data/TRI data/originals/Downloaded 2020-07-24/481873288_2015.CSV")
+tri_raw10 <- read_csv("raw/TRI originals/481818639_2010.CSV")
+tri_raw11 <- read_csv("raw/TRI originals/481838923_2011.CSV")
+tri_raw12 <- read_csv("raw/TRI originals/481847511_2012.CSV")
+tri_raw13 <- read_csv("raw/TRI originals/481855955_2013.CSV")
+tri_raw14 <- read_csv("raw/TRI originals/481864670_2014.CSV")
+tri_raw15 <- read_csv("raw/TRI originals/481873288_2015.CSV")
 
 tri_raw <- bind_rows(tri_raw10, tri_raw11, tri_raw12, tri_raw13, tri_raw14, tri_raw15)
 colnames(tri_raw) <- gsub("V_TRI_FORM_R_EZ.","", colnames(tri_raw))
@@ -608,10 +605,9 @@ table(tri_merge$test_chem, tri_merge$GEO.id2 %in% ucmrcounties_fips)
 ################################################################################
 
 #get urbanicity data
-cnurban <- read.csv("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/2010 urban/DEC_10_SF1_H2_with_ann.csv", skip = 1)
+cnurban <- read.csv("raw/2010 urban/DEC_10_SF1_H2_with_ann.csv", skip = 1)
 
-c
-
+cnurban2merge <- cnurban
 # JML check: identical house #s #
 sum(as.numeric(cnurban$Urban....Inside.urbanized.areas)) == sum(cnurban2merge$urb.house)
 sum(as.numeric(cnurban$Urban....Inside.urban.clusters)) == sum(cnurban2merge$urb.house.c)
@@ -629,7 +625,7 @@ stopifnot(cnurban2merge$geography %in% county14all$geography)
 ################################################################################
 
 #bring in land area amount, necessary to quantify % land use for systems with aggregated regions
-censuslandarea <- read.csv("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/land area/DEC_10_SF1_G001_with_ann.csv")
+censuslandarea <- read.csv("raw/land area/DEC_10_SF1_G001_with_ann.csv")
 
 #pull out land area
 landarea <- censuslandarea[2:nrow(censuslandarea),] %>%
@@ -652,48 +648,47 @@ length(unique(landarea$GEO.id2))
 
 stopifnot(landarea$GEO.id2 %in% county14all$GEO.id2)
 
-################################################################################
-#  7. PROCESS METRO DATA  ####
-################################################################################
-
-#add metro area status to counties
-cnmetros <- read.csv("../Data/Demographic, County, and Water System Data/raw/Geography/ruralurban_counties2013.csv")
-
-cnmetros$metrostatus <- ifelse(grepl("^Metro", cnmetros$Description) == TRUE, "Metro",
-                               ifelse(grepl("Completely rural", cnmetros$Description) == TRUE, "Rural", "Nonmetro, Nonrural"))
-
-metroformatted <- merge(cnmetros, stateabbnamekey, by.x = "State", by.y = "stateabb")
-
-#clean up mismatches
-
-metroformatted <- inner_join(cnmetros, stateabbnamekey, by = c("State" = "stateabb")) %>% 
-  mutate(countyname.form = paste0(tolower(County_Name), ", ", fullstate_lower)) %>% 
-  mutate(GEO.id2 = case_when(nchar(FIPS) == 4 ~ paste0("0", as.character(FIPS)),TRUE ~ as.character(FIPS)),
-         #add bedford city, va to bedford county, va, both metro so fine
-         GEO.id2 = case_when(GEO.id2 == "51515" ~ "51019",
-                             TRUE ~ GEO.id2)) %>%
-  select("metrostatus", GEO.id2) %>% 
-  unique()
-
-
-setdiff(metroformatted$GEO.id2, county14all$GEO.id2)
-#doesn't match with 51515 -- bedford city, virginia was an independent city until 2013 now a 
-#part of bedford county, virginia (2020-08-21) (see note at top of script)
-
-
+# ################################################################################
+# #  7. PROCESS METRO DATA  ####
+# ################################################################################
+# 
+# #add metro area status to counties
+# cnmetros <- read.csv("../Data/Demographic, County, and Water System Data/raw/Geography/ruralurban_counties2013.csv")
+# 
+# cnmetros$metrostatus <- ifelse(grepl("^Metro", cnmetros$Description) == TRUE, "Metro",
+#                                ifelse(grepl("Completely rural", cnmetros$Description) == TRUE, "Rural", "Nonmetro, Nonrural"))
+# 
+# metroformatted <- merge(cnmetros, stateabbnamekey, by.x = "State", by.y = "stateabb")
+# 
+# #clean up mismatches
+# 
+# metroformatted <- inner_join(cnmetros, stateabbnamekey, by = c("State" = "stateabb")) %>% 
+#   mutate(countyname.form = paste0(tolower(County_Name), ", ", fullstate_lower)) %>% 
+#   mutate(GEO.id2 = case_when(nchar(FIPS) == 4 ~ paste0("0", as.character(FIPS)),TRUE ~ as.character(FIPS)),
+#          #add bedford city, va to bedford county, va, both metro so fine
+#          GEO.id2 = case_when(GEO.id2 == "51515" ~ "51019",
+#                              TRUE ~ GEO.id2)) %>%
+#   select("metrostatus", GEO.id2) %>% 
+#   unique()
+# 
+# 
+# setdiff(metroformatted$GEO.id2, county14all$GEO.id2)
+# #doesn't match with 51515 -- bedford city, virginia was an independent city until 2013 now a 
+# #part of bedford county, virginia (2020-08-21) (see note at top of script)
+# 
 
 ################################################################################
 #  8.   Load PFAS point source files ####
 ################################################################################
 
 # load point source files
-epastewardship <- read_excel("../Data/PFAS point source data/Data/EPA 2010.2015 PFOA Stewardship Program sites.xlsx")
+epastewardship <- read_excel("raw/PFAS point source data/Data/EPA 2010.2015 PFOA Stewardship Program sites.xlsx")
 
-WWTPfacilities <- read_csv("../Data/PFAS point source data/Data/WWTP facility_details.csv")
+WWTPfacilities <- read_csv("raw/PFAS point source data/Data/WWTP facility_details.csv")
 
-MFTA <- read_excel("../Data/PFAS point source data/Data/all MFTA_county.xlsx")
+MFTA <- read_excel("raw/PFAS point source data/Data/all MFTA_county.xlsx")
 
-airports <- read_excel("../Data/PFAS point source data/Data/Part 139_cert_airports.xlsx")
+airports <- read_excel("raw/PFAS point source data/Data/Part 139_cert_airports.xlsx")
 
 
 correct_counties <- function(dat){
@@ -893,23 +888,21 @@ setdiff(MFTA_merge$geography, county14all$geography)
 #  9. MERGE ALL  ####
 ################################################################################
 
-
-
 cn14demo_merge <- county14all %>% 
   left_join(mdi2merge) %>% 
-  left_join(cnurban2merge) %>% 
+  # left_join(cnurban2merge) %>% 
   left_join(landarea) %>%
-  left_join(metroformatted) %>%
+  # left_join(metroformatted) %>%
   left_join(WWTPfacilities_merge) %>%
   left_join(epastewardship_merge) %>%
   left_join(airports_merge) %>%
   left_join(MFTA_merge)
 
-
 # Create a mock data frame that is going to give us a row for each TRI Chem 
 # within each county (regardless of whether a facility exists)
 # (nrows = number of counties x8), if a county has no TRI facility that reports 
 # then the TRI fields will be empty 
+
 cndemo_tri <-  cn14demo_merge %>% 
   select(GEO.id2) %>% 
   mutate(test_chem = paste("ETHYLIDENE DICHLORIDE", "1,4-DIOXANE", "CHLORINATED SOLVENTS", 
@@ -920,6 +913,7 @@ cndemo_tri <-  cn14demo_merge %>%
 check <- cndemo_tri %>%
   group_by(GEO.id2) %>%
   count()
+
 table(check$n, useNA = "ifany")
 #all 8 okay
 
@@ -945,12 +939,15 @@ cn14all <- cn14demo_merge  %>%
 check <- cn14all %>% 
   group_by(GEO.id2) %>% 
   count()
+
 table(check$n, useNA = "ifany")
 # all good! 2020-10-13
 
 stopifnot(!is.na(cn14all$GEO.id2))
 
 #write_csv(cn14all, paste0("results/preliminary/UCMR demo data pre-PWSID match ", Sys.Date(),".csv"))
+
+# ARCHIVE ---------------------------------------------------------------------
 
 # ################################################################
 # library(sp)
