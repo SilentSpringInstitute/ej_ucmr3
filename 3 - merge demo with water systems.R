@@ -335,6 +335,126 @@ for(i in keepcols){
   stopifnot(length(unique(pws_demo$GEO.id2[which(is.na(pws_demo$i))])) == 0)
 }
 
+################################################################################
+#  1a. LOAD DATA  ####
+################################################################################
+
+ucmrsys <- unique(ucmr3_targetsamples$PWSID)
+
+#### load demo data (write out from script 2)
+pws_demo <- read.csv("intermediate/pws demo data 2021-06-29.csv") %>%
+  mutate(GEO.id2 = case_when(nchar(GEO.id2) == 4 ~ paste0("0", GEO.id2),
+                             TRUE ~ as.character(GEO.id2)))
+
+# filter to just UCMR3 systems
+ucmr_demo <- pws_demo %>% filter(PWSID %in% ucmrsys)
+
+#### load PWSID and FIPS linker
+pwsid_fips <- read_csv("intermediate/all sdwis with demo PWSID to FIPS linker 2021-06-28.csv")
+
+pws_cols <- c("PWSID", "contam.pfas", "Size",  "source_type", "detchem", 
+              "hlvlchem", "GEO.id2", "geography")
+
+demo_cols <- c("perc_hisp_any", "mdi", "perc_pov_ppl", "perc_black_nohisp",
+               "perc_white_nohisp", "perc_hmown", "propurban", "perc_uninsur")
+
+sources_cols <- c("test_chem","WWTP_ML_km2", "n_epastewardship_bin", "airportMFTA_bin", "n_fac_bin")
+
+keepcols <- c(pws_cols, demo_cols, sources_cols)
+
+# if needed, load SDWA violation data
+# sdwa_violations <- read_csv("../Data/SDWA/all violations 2010-2015.csv")
+
+
+################################################################################
+#  1b. RUN SOME INITIAL CHECKS ####
+################################################################################
+
+for(i in demo_cols){
+  stopifnot(length(unique(pws_demo$PWSID[which(is.na(pws_demo$i))])) == 0)
+}
+
+for(i in colnames(ucmr_detcode)){
+  stopifnot(length(unique(ucmr_detcode$PWSID[which(is.na(ucmr_detcode[,i]))])) == 0)
+}
+
+stopifnot(ucmr_detcode$PWSID %in% ucmr_demo$PWSID)
+
+
+################################################################################
+#  2a. MERGE UCMR DATA WITH DEMOGRAPHICS  ####
+################################################################################
+
+# data dictionary: 
+# detchem == chemical was ever detected (1)
+# hlvlchem == chemical was ever measured above health level guideline (1)
+
+ucmrdf.demo <- unique(ucmr_detcode[,c("PWSID", "contam.pfas", "Size", "source_type")]) %>%
+  full_join(ucmr_demo) %>% 
+  select(-fugitive_air, -stack_air,-underground,-x5_landfills,-on_site_release_total,
+         -potw_trns_rlse,-potw_trns_trt,-potw_total_transfers,-off_site_release_total ,
+         -off_site_treated_total,-total_transfer,-total_releases,-treatment_on_site,
+         -treatment_off_site) %>% 
+  mutate(n_fac_bin = case_when(n_fac > 0 ~ 1,
+                               TRUE ~ 0),
+         # create WWTP total flow per 1000 acre variable
+         WWTP_mgd_1000acre = WWTP_totalflow_mgd/(land.area/1000),
+         # convert to million L per km2
+         WWTP_ML_km2 = conv_unit(WWTP_mgd_1000acre, "us_gal", "l") / 
+           conv_unit(1000, "acre", "km2"),
+         n_airports_bin = case_when(n_airports > 0 ~ 1,
+                                    TRUE ~ 0), 
+         n_epastewardship_bin = case_when(n_epastewardship > 0 ~ 1,
+                                          TRUE ~ 0),
+         n_MFTA_bin = case_when(n_MFTA > 0 ~ 1, 
+                                TRUE ~ 0),
+         airportMFTA_bin = case_when(n_airports_bin == 1 | n_MFTA_bin == 1 ~ 1, 
+                                     TRUE ~ 0),
+         pov_status_co = case_when(perc_pov_ppl > 20 ~ 1,
+                                   TRUE ~ 0)) %>% 
+  mutate(sdwis.sys.size = case_when(WS.POPULATION_SERVED_COUNT < 501 ~ "V. Small",
+                                    WS.POPULATION_SERVED_COUNT < 3301 ~ "Small",
+                                    WS.POPULATION_SERVED_COUNT < 10001 ~ "Medium", 
+                                    WS.POPULATION_SERVED_COUNT < 100001 ~ "Large",
+                                    WS.POPULATION_SERVED_COUNT > 100000 ~ "V. Large")) 
+
+#merge demo data and test code (one row per system-contam.pfas pairing)
+ucmrdf.demo_detcode <- full_join(ucmrdf.demo, ucmr_detcode) %>% 
+  ungroup()
+
+### JML check: some systems have NA for sdwis.sys.size; are these dropped in modelling later?
+no.sdwis.size <- unique(ucmrdf.demo_detcode$PWSID[is.na(ucmrdf.demo_detcode$sdwis.sys.size)]) # 5 systems
+# these do have values in the "Size" column though. substitute these in?
+###
+
+################################################################################
+#  2b. RUN SOME CHECKS  ####
+################################################################################
+
+#how many PWSID  for each ucmr and tri chem
+check <- ucmrdf.demo_detcode %>% 
+  group_by(contam.pfas, test_chem) %>% 
+  summarize(n = length(unique(PWSID)))
+
+table(ucmrdf.demo_detcode$contam.pfas, ucmrdf.demo_detcode$test_chem, useNA = "ifany")
+# 1,1-dichloroethane = 4807
+# 1.4-dioxane = 4810
+# evrdet = 4815
+# HCFC-22 = 4811
+# PFAS = 4815
+
+stopifnot(!is.na(ucmrdf.demo_detcode$test_chem))
+
+#investigate if needed
+# empty_test_chem <- ucmrdf.demo_detcode %>% 
+#   filter(is.na(test_chem)) %>% 
+#   pull(PWSID) %>% 
+#   unique()
+# 
+# stopifnot(is_empty(empty_test_chem))
+#hooray!
+
+
 # WRITE OUT FINAL PRODUCT
 #write_csv(pws_demo, paste0("results/preliminary/pws demo data ", Sys.Date(),".csv"))
 main <- read.csv("main.csv")
