@@ -1,3 +1,6 @@
+library(tidyverse)
+library(janitor)
+
 sdwis2013 <- read_xlsx("raw/Water System Detail_20240624.xlsx")
 
 colnames <- as.character(as.vector(sdwis2013[4,]))
@@ -14,9 +17,22 @@ length(sys_in_ucmr3) #5401 water systems
 sys_in_ucmr3 <- unique(ucmr_detcode$PWSID)
 length(sys_in_ucmr3) #4815 water systems <- USE THIS
 
+# Start analysis here ---------------------------------------------------------
+
+# Of the total number of water systems in SDWIS, how many were part of the UCMR3? 
+# total number = 150,332 systems 
+# in the ucmr3 = 4,814
+# NOTE: 
+#  - one system is missing (MS0130025). WHY? It was coded as inactive status. 
+
+setdiff(sys_in_ucmr3, sdwis2013$pws_id)
+# check Amanda's SDWIS downloads
+allsdwis %>% filter(PWSID == "MS0130025")
+
 sdwis2013 %>%
   mutate(in_ucmr3 = if_else(pws_id %in% sys_in_ucmr3, "yes", "no")) %>%
-  tabyl(in_ucmr3)
+  tabyl(in_ucmr3) %>%
+  adorn_totals()
 
 sdwis2013 %>%
   mutate(in_ucmr3 = if_else(pws_id %in% sys_in_ucmr3, "yes", "no")) %>%
