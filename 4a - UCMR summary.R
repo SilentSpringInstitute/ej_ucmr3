@@ -89,7 +89,7 @@ options(stringsAsFactors = FALSE)
 ucmrsys <- unique(ucmr3_targetsamples$PWSID)
 
 #### load demo data (write out from script 2)
-pws_demo <- read.csv("results/preliminary/pws demo data 2021-06-29.csv") %>%
+pws_demo <- read.csv("intermediate/pws demo data 2021-06-29.csv") %>%
   mutate(GEO.id2 = case_when(nchar(GEO.id2) == 4 ~ paste0("0", GEO.id2),
                              TRUE ~ as.character(GEO.id2)))
 
@@ -97,7 +97,7 @@ pws_demo <- read.csv("results/preliminary/pws demo data 2021-06-29.csv") %>%
 ucmr_demo <- pws_demo %>% filter(PWSID %in% ucmrsys)
 
 #### load PWSID and FIPS linker
-pwsid_fips <- read_csv("results/preliminary/all sdwis with demo PWSID to FIPS linker 2021-06-28.csv")
+pwsid_fips <- read_csv("intermediate/all sdwis with demo PWSID to FIPS linker 2021-06-28.csv")
 
 pws_cols <- c("PWSID", "contam.pfas", "Size",  "source_type", "detchem", 
               "hlvlchem", "GEO.id2", "geography")
