@@ -8,7 +8,6 @@ library(tidyverse)
 
 options (stringsAsFactors = FALSE)
 
-
 source_file_loc <- dirname(rstudioapi::getActiveDocumentContext()$path)
 setwd(source_file_loc)
 
@@ -59,17 +58,17 @@ setwd(source_file_loc)
 ################################################################################
 
 # #read in UCMR data
-ucmr3 <- read_csv("results/preliminary/ucmr3 processed with detchem code 2021-06-28.csv")
-# 
+ucmr3 <- read_csv("intermediate/ucmr3 processed with detchem code 2021-06-28.csv")
+ 
 # #get a log of which systems were tested in UCMR
 ucmrsys <- unique(ucmr3$PWSID)
 
 #use read.csv because it doesn't try to correct col types
 
-cn14all <- read.csv("results/preliminary/UCMR demo data pre-PWSID match 2021-05-10.csv")%>% 
+cn14all <- read.csv("intermediate/UCMR demo data pre-PWSID match 2021-05-10.csv")%>% 
   mutate(GEO.id2 = case_when(nchar(GEO.id2) == 4 ~ paste0("0", GEO.id2),TRUE ~ as.character(GEO.id2)))
 
-pwsid_fips <- read_csv("results/preliminary/all sdwis with demo PWSID to FIPS linker 2021-06-28.csv") %>% 
+pwsid_fips <- read_csv("intermediate/all sdwis with demo PWSID to FIPS linker 2021-06-28.csv") %>% 
   mutate(GEO.id2 = case_when(nchar(GEO.id2) == 4 ~ paste0("0", GEO.id2),TRUE ~ as.character(GEO.id2))) %>% 
   select(-geography)
 
@@ -92,6 +91,7 @@ pws_demoall <- cn14all %>%
 check <- pws_demoall %>% 
   group_by(GEO.id2, PWSID, test_chem) %>% 
   count()
+
 stopifnot(check$n == 1)
 #all one -- hooray! 2021-03-05
 
