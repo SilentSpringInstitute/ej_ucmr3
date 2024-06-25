@@ -12,12 +12,27 @@ library(readxl)
 
 options (stringsAsFactors = FALSE)
 
+# Unclear if we still need this post-Github:
 source_file_loc <- dirname(rstudioapi::getActiveDocumentContext()$path)
 setwd(source_file_loc)
 
-#get ucmr3 data
+# Get UCMR3 data
 source("1 - UCMR loading and processing.R")
-rm(list=setdiff(ls(), c("ucmr_detcode", "ucmrsys")))
+
+# Keep two objects in the working directory:
+# (1) a raw copy of the UCMR3 data, 
+# (2) a intermediate dataset that processed whether a system: 
+#     (-) detected a target contaminant 
+#     (-) exceeded an health-based reference level 
+# Target contaminants: a PFAS (any of 6), 1,4-dioxane, 1,1-DCA,
+# HCFC-22, or any of these target contaminants. 
+
+rm(
+  list = 
+    setdiff(ls(),
+            c("ucmr3_raw", "ucmr_detcode")
+            )
+  )
 
 ################################################################################
 #  0. README ####
@@ -201,10 +216,12 @@ rm(list=setdiff(ls(), c("ucmr_detcode", "ucmrsys")))
 #  1. LOAD DATA  ####
 ################################################################################
 
-#load cleaned SDWIS file
-allsdwis <- read_csv("../Data/Demographic, County, and Water System Data/processed_aggregated_sdwis_geoandsys.csv")
-#add in DC systems
-dcsys <- read_csv("../Data/Demographic, County, and Water System Data/originals/Community Water Sys in SDWIS/DC_manual_download_2021-03-05.csv") %>%
+# Load clean SDWIS file
+allsdwis <- read_csv("clean/processed_aggregated_sdwis_geoandsys.csv")
+
+# Clean SDWIS file does not contain DC systems. Load in separately and adjust 
+# variables for consistency with the primary SDWIS file
+dcsys <- read_csv("clean/DC_manual_download_2021-03-05.csv") %>%
   rename(PWSID = `PWS ID`,
          PWS_NAME = `PWS Name`) %>% 
   mutate(PRIMACY_AGENCY_CODE = "DC",
@@ -215,22 +232,23 @@ dcsys <- read_csv("../Data/Demographic, County, and Water System Data/originals/
          ) %>% 
   select(PWSID, PWS_NAME, PWS_TYPE_CODE, PRIMACY_AGENCY_CODE, WS.POPULATION_SERVED_COUNT, COUNTY_SERVED)
 
-#bind sdwis with DC systems
+# Combine U.S. and D.C. SDWIS files 
 allsdwis_dc <- bind_rows(allsdwis, dcsys)
 
-#get list of PWS in UCMR 
+# get list of PWS in UCMR 
 sdwis_in_ucmr <- allsdwis_dc %>% filter(PWSID %in% ucmr_detcode$PWSID)
 
 # check by JML
 n_distinct(sdwis_in_ucmr$PWSID) == n_distinct(ucmr_detcode$PWSID) # all in SDWIS
-#
+
 
 #how many UCMR PWSs have city served information?
 sdwis_in_ucmr %>% 
   group_by(.) %>%
   summarize(n_sys_wo_cityserved = length(unique(PWSID[which(is.na(CITY_SERVED))])),
             n_sys_w_cityserved = length(unique(PWSID[which(!is.na(CITY_SERVED))])),
-            perc_sys_wo_cityserved = n_sys_wo_cityserved/n()*100)
+            perc_sys_wo_cityserved = n_sys_wo_cityserved/n()*100, 
+            perc_sys_w_cityserved = n_sys_w_cityserved/n()*100)
 #42%
 
 ### for matching FIPS/state abb only data with county names 
