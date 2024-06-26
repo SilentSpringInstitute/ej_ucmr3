@@ -1,13 +1,13 @@
-
-#+ 10/4/23
-#+ AM
-#+ 
-#+ I moved the stratified results into a separate script to make the 
-#+ other code easier to read and faster to source().
+# 10/4/23
+# AM
+#
+# This code was originally from 3. analyze ucmr3 - crude & adj.R. 
+# Migrated these code lines to make the scripts easier to read and faster to 
+# source.
 
 # If starting from the current script, please run:
 # this takes a few minutes to run
-# source("3. analyze ucmr3.R")
+# source("3. analyze ucmr3 - crude & adj.R")
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # TABLE 5. Stratified by Size, adjusted logistic models ----------------
@@ -17,7 +17,7 @@
 #   dat_clean 
 # 
 # Stratify by: 
-# Z = size (large or)
+# Z = size (large or small)
 # 
 # Six outcomes: 
 # Y1 = detected any target chem 
@@ -37,6 +37,7 @@
 
 ## Prepare a nested dataframe to run over with the regression models.
 # Pivot the OUTCOME variables ONLY, then nest.
+# Nest now includes the outcome of interest ("name") and size ("size").
 
 nested_data_for_stratreg <- dat_clean %>%
   mutate(size = factor(size, levels = c("S", "L"))) %>% 
@@ -48,8 +49,9 @@ nested_data_for_stratreg <- dat_clean %>%
 # system characteristics, and wastewater, but excludes contaminant-specific sources).
 # Adjust the base formula to include contaminant-specific sources, which
 # vary by outcome (e.g., 1,4-dioxane detect = [base formula] + any 1-4d facility).
-# Remove system size as a variable in the 1,1-DCA regression 
 # Add a state intercept term at the end of the equation.
+# 
+# Size is not included in the base formula.
 
 base_formula2 <- paste(
   "~ perc_hisp_any + perc_black_nohisp + mdi_rate +",
@@ -66,12 +68,12 @@ nested_data2_add_form <- nested_data_for_stratreg %>%
                                 str_detect(name, "pfas") ~ paste(my_formula, "+  n_MFTA_airport_bin + src_epa_present_bin"), 
                                 TRUE ~ "9999")) %>%
   {stopifnot(nrow(filter(., my_formula == "9999"))==0); .;} %>%
-  mutate(my_formula = paste(my_formula, " + (1|state)")) %>%
-  mutate(my_formula = if_else(
-    name == "det_dca", 
-    str_remove(my_formula, "size \\+ "), 
-    my_formula
-  ))
+  mutate(my_formula = paste(my_formula, " + (1|state)")) #%>%
+  # mutate(my_formula = if_else(
+  #   name == "det_dca", 
+  #   str_remove(my_formula, "size \\+ "), 
+  #   my_formula
+  # ))
 
 nested_data2_ready <- nested_data2_add_form %>% 
   filter(name == "det_any") 
@@ -153,7 +155,7 @@ strt_res_clean_estimates <- stratified_results %>%
 # Order the table, almost ready to export 
 
 strt_res_tidy <- strt_res_clean_estimates %>%
-  select(name, term, n, estimate_edit, p_format, p_star) %>%
+  select(name, size, term, n, estimate_edit, p_format, p_star) %>%
   mutate(term = factor(term, levels = TableOrder_vec2)) %>%
   arrange(term)
 
