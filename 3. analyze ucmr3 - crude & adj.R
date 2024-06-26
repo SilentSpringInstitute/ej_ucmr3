@@ -298,12 +298,12 @@ nested_data_add_form <- nested_data_for_adjreg %>%
                                 str_detect(name, "pfas") ~ paste(my_formula, "+  n_MFTA_airport_bin + src_epa_present_bin"), 
                                 TRUE ~ "9999")) %>%
   {stopifnot(nrow(filter(., my_formula == "9999"))==0); .;} %>%
-  mutate(my_formula = paste(my_formula, " + (1|state)")) %>%
-  mutate(my_formula = if_else(
-    name == "det_dca", 
-    str_remove(my_formula, "size \\+ "), 
-    my_formula
-  ))
+  mutate(my_formula = paste(my_formula, " + (1|state)")) # %>%
+  # mutate(my_formula = if_else(
+  #   name == "det_dca", 
+  #   str_remove(my_formula, "size \\+ "), 
+  #   my_formula
+  # ))
   
 ## Filter the nested data to include the outcomes of interest only. 
 # Note: Only 1 PWS (PWSID: IL2010300) had a sample of 1,1-DCA with conc > health guidance value. 
