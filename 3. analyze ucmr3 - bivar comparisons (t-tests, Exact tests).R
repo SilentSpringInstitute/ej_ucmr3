@@ -8,7 +8,6 @@ library(ggplot2)
 library(broom)
 library(ggh4x)
 
-
 # dat_clean   = df of 4808 PWSs (restricted to PWSs w/ MDI data)
 dat_clean
 
@@ -304,7 +303,7 @@ source_demo_comparison <- cn15.2 %>%
   
   # format statistical test results
   unnest(test_clean) %>% 
-  mutate(p_stars = custom_stars(p.value)) %>%
+  mutate(p_stars = gtools::stars.pval(p.value)) %>%
   select(name, demovar, estimate, estimate1, estimate2, p.value, p_stars)
 
 source_demo_comparison
