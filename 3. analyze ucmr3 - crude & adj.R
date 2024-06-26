@@ -260,12 +260,12 @@ crude_results_export
 # X2 = % non-Hispanic Black 
 # X3 = % urban 
 # X4 = % deprived (SES) 
-# X4 = system size (large or small, ref: small) 
-# X5 = source water (GW, MIX, or SW, ref: SW)
-# X6 = Number of samples 
-# X7 = Wastewater effluent flow (million L per km2) 
-# X8 = Any TRI facility (yes or no, ref: no) 
-# X9...X13 = Any relevant pollution source (3 types of TRI facility, MFTA, airport)
+# X5 = system size (large or small, ref: small) 
+# X6 = source water (GW, MIX, or SW, ref: SW)
+# X7 = Number of samples 
+# X8 = Wastewater effluent flow (million L per km2) 
+# X9 = Any TRI facility (yes or no, ref: no) 
+# X10...X14 = Any relevant pollution source (3 types of TRI facility, MFTA, airport)
 
 ## Prepare a nested dataframe to run over with the regression models.
 # Pivot the OUTCOME variables ONLY, then nest.
