@@ -135,8 +135,6 @@ options(stringsAsFactors = FALSE)
 #  4a. PROCESS TRI DATA ####
 ################################################################################
 
-
-
 ucmr_tri_dummy_rows <-  unique(ucmr_detcode[,c("PWSID", "contam.pfas")]) %>%
   mutate(test_chem = paste("ETHYLIDENE DICHLORIDE", "1,4-DIOXANE", "CHLORINATED SOLVENTS", 
                            "1,1,1-TRICHLOROETHANE", "CHLORODIFLUOROMETHANE", 
