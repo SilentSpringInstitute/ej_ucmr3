@@ -454,20 +454,21 @@ stopifnot(!is.na(ucmrdf.demo_detcode$test_chem))
 # stopifnot(is_empty(empty_test_chem))
 #hooray!
 
-
-# WRITE OUT FINAL PRODUCT
-#write_csv(pws_demo, paste0("results/preliminary/pws demo data ", Sys.Date(),".csv"))
-main <- read.csv("main.csv")
-newdata <- main %>% select(PWSID, perc_black_nohisp, perc_hisp_any, mdi_rate)
-
-colnames(pws_demo)
-olddata <- pws_demo %>% 
-  select(PWSID, perc_hmown, perc_hisp_any, mdi) %>% 
-  distinct() %>%
-  rename('mdi_rate' = 'mdi')
-olddata <- olddata %>% filter(PWSID %in% ucmr3_raw$PWSID) %>% mutate_if(is.numeric, round, 1)
-olddata %>% arrange(-perc_hmown)
-
-setdiff(newdata$PWSID, olddata$PWSID)
-
-olddata %>% filter(PWSID == "IA0400900")
+# END OF SCRIPT 3 ---------------------------------------------------------
+# 
+# # WRITE OUT FINAL PRODUCT
+# #write_csv(pws_demo, paste0("results/preliminary/pws demo data ", Sys.Date(),".csv"))
+# main <- read.csv("main.csv")
+# newdata <- main %>% select(PWSID, perc_black_nohisp, perc_hisp_any, mdi_rate)
+# 
+# colnames(pws_demo)
+# olddata <- pws_demo %>% 
+#   select(PWSID, perc_hmown, perc_hisp_any, mdi) %>% 
+#   distinct() %>%
+#   rename('mdi_rate' = 'mdi')
+# olddata <- olddata %>% filter(PWSID %in% ucmr3_raw$PWSID) %>% mutate_if(is.numeric, round, 1)
+# olddata %>% arrange(-perc_hmown)
+# 
+# setdiff(newdata$PWSID, olddata$PWSID)
+# 
+# olddata %>% filter(PWSID == "IA0400900")
