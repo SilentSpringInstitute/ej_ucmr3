@@ -28,10 +28,10 @@ key_states <- data.frame(state_abbr = state.abb,
 
 ucmr3 <- read_csv("raw/UCMR3_All.csv") 
 
-allsdwis <- read_csv("../Data/Demographic, County, and Water System Data/processed_aggregated_sdwis_geoandsys.csv")
+allsdwis <- read_csv("clean/processed_aggregated_sdwis_geoandsys.csv")
 
 #add in DC systems
-allsdwis2 <- read_csv("../Data/Demographic, County, and Water System Data/originals/Community Water Sys in SDWIS/DC_manual_download_2021-03-05.csv") %>%
+allsdwis2 <- read_csv("clean/DC_manual_download_2021-03-05.csv") %>%
   rename(PWSID = `PWS ID`,
          PWS_NAME = `PWS Name`) %>% 
   mutate(PRIMACY_AGENCY_CODE = "DC",
@@ -60,10 +60,10 @@ sdwis_in_ucmr %>%
 
 # County demographics (CN) ------------------------------------------------
 
-county14socraw <- read.csv("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/2014 5yr/ACS_14_5YR_DP02_with_ann.csv")
-county14ecoraw <- read.csv("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/2014 5yr/ACS_14_5YR_DP03_with_ann.csv")
-county14demraw <- read.csv("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/2014 5yr/ACS_14_5YR_DP05_with_ann.csv")
-county14tenureraw <- read.csv("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/2014 5yr/ACS_14_5YR_B25003_with_ann.csv")
+county14socraw <- read.csv("raw/2014 5yr/ACS_14_5YR_DP02_with_ann.csv")
+county14ecoraw <- read.csv("raw/2014 5yr/ACS_14_5YR_DP03_with_ann.csv")
+county14demraw <- read.csv("raw/2014 5yr/ACS_14_5YR_DP05_with_ann.csv")
+county14tenureraw <- read.csv("raw/2014 5yr/ACS_14_5YR_B25003_with_ann.csv")
 
 #scrape just EJ vars and rename (based on ACS documentation)
 county14soc <- county14socraw[2:nrow(county14socraw), c("GEO.id", "GEO.id2", "GEO.display.label", "HC03_VC95", "HC03_VC142", "HC03_VC173")] %>%
@@ -111,7 +111,7 @@ rm(list = ls(pattern = "^county14"))
 
 # Multiple Deprivation Index (MDI) ----------------------------------------
 
-mdi <- read_xls("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/Multidimensional Deprivation Index Rates/county-level-mdi-rates-2017.xls") %>% 
+mdi <- read_xls("raw/county-level-mdi-rates-2017.xls") %>% 
   filter(!is.na(county))
 
 mdi2 <- mdi %>% 
@@ -126,7 +126,7 @@ table(is.na(mdi2$mdi_rate)) # 3 missing due to data collection issues
 
 #+ Urbanicity comes from 1-year 2010 ACS estimates. 
 
-cnurban <- read.csv("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/2010 urban/DEC_10_SF1_H2_with_ann.csv", skip = 1)
+cnurban <- read.csv("raw/2010 urban/DEC_10_SF1_H2_with_ann.csv", skip = 1)
 
 #count of housing units in urban areas
 cnurban2 <- cnurban %>% 
@@ -225,13 +225,13 @@ fips_check1.1 <- fips_check1 %>% distinct(PWSID, State) # 122 systems do not hav
 
 # read in TRI Basic Data File 
 
-tri_basic10 <- read_csv("../Data/TRI data/basic data file/TRI_2010_US.csv")
-tri_basic11 <- read_csv("../Data/TRI data/basic data file/TRI_2011_US.csv")
-tri_basic12 <- read_csv("../Data/TRI data/basic data file/TRI_2012_US.csv")
-tri_basic13 <- read_csv("../Data/TRI data/basic data file/TRI_2013_US.csv")
-tri_basic14 <- read_csv("../Data/TRI data/basic data file/TRI_2014_US.csv") %>% 
+tri_basic10 <- read_csv("raw/TRI/TRI_2010_US.csv")
+tri_basic11 <- read_csv("raw/TRI/TRI_2011_US.csv")
+tri_basic12 <- read_csv("raw/TRI/TRI_2012_US.csv")
+tri_basic13 <- read_csv("raw/TRI/TRI_2013_US.csv")
+tri_basic14 <- read_csv("raw/TRI/TRI_2014_US.csv") %>% 
   mutate(`10. BIA` = as.numeric(`10. BIA`))
-tri_basic15 <- read_csv("../Data/TRI data/basic data file/TRI_2015_US.csv") %>% 
+tri_basic15 <- read_csv("raw/TRI/TRI_2015_US.csv") %>% 
   mutate(`9. ZIP` = as.character(`9. ZIP`), 
          `15. PARENT CO DB NUM` = as.character(`15. PARENT CO DB NUM`)) # added AM 11-25-22
 
@@ -259,12 +259,12 @@ rm(list = ls(pattern = "^tri_basic1"))
 
 # read in TRI R and A download data
 # has to read in in order to get fips code
-tri_raw10 <- read_csv("../Data/TRI data/originals/Downloaded 2020-07-24/481818639_2010.CSV")
-tri_raw11 <- read_csv("../Data/TRI data/originals/Downloaded 2020-07-24/481838923_2011.CSV")
-tri_raw12 <- read_csv("../Data/TRI data/originals/Downloaded 2020-07-24/481847511_2012.CSV")
-tri_raw13 <- read_csv("../Data/TRI data/originals/Downloaded 2020-07-24/481855955_2013.CSV")
-tri_raw14 <- read_csv("../Data/TRI data/originals/Downloaded 2020-07-24/481864670_2014.CSV")
-tri_raw15 <- read_csv("../Data/TRI data/originals/Downloaded 2020-07-24/481873288_2015.CSV")
+tri_raw10 <- read_csv("raw/TRI originals/481818639_2010.CSV")
+tri_raw11 <- read_csv("raw/TRI originals/481838923_2011.CSV")
+tri_raw12 <- read_csv("raw/TRI originals/481847511_2012.CSV")
+tri_raw13 <- read_csv("raw/TRI originals/481855955_2013.CSV")
+tri_raw14 <- read_csv("raw/TRI originals/481864670_2014.CSV")
+tri_raw15 <- read_csv("raw/TRI originals/481873288_2015.CSV")
 
 tri_raw <- bind_rows(tri_raw10, tri_raw11, tri_raw12, tri_raw13, tri_raw14, tri_raw15)
 colnames(tri_raw) <- gsub("V_TRI_FORM_R_EZ.","", colnames(tri_raw))
@@ -340,7 +340,7 @@ tri4 <- tri3 %>%
 
 # Bring in land area amount, necessary to quantify % land use for systems with aggregated regions
 # Note: land.area is in ACRES units
-landarea <- read.csv("../Data/Demographic, County, and Water System Data/originals/ACS Census Data/by County/land area/DEC_10_SF1_G001_with_ann.csv")
+landarea <- read.csv("raw/land area/DEC_10_SF1_G001_with_ann.csv")
 
 # Pull out land area
 landarea1 <- landarea[2:nrow(landarea),] %>%
@@ -361,10 +361,10 @@ stopifnot(landarea2$GEO.id2 %in% cn14$GEO.id2)
 # POINT SOURCES -----------------------------------------------------------
 
 # load point source files
-src_epa <- epastewardship <- read_excel("../Data/PFAS point source data/Data/EPA 2010.2015 PFOA Stewardship Program sites.xlsx")
-src_wwtp <- WWTPfacilities <- read_csv("../Data/PFAS point source data/Data/WWTP facility_details.csv")
-src_mfta <- MFTA <- read_excel("../Data/PFAS point source data/Data/all MFTA_county.xlsx")
-src_airprt <- airports <- read_excel("../Data/PFAS point source data/Data/Part 139_cert_airports.xlsx")
+src_epa <- epastewardship <- read_excel("raw/PFAS point source data/Data/EPA 2010.2015 PFOA Stewardship Program sites.xlsx")
+src_wwtp <- WWTPfacilities <- read_csv("raw/PFAS point source data/Data/WWTP facility_details.csv")
+src_mfta <- MFTA <- read_excel("raw/PFAS point source data/Data/all MFTA_county.xlsx")
+src_airprt <- airports <- read_excel("raw/PFAS point source data/Data/Part 139_cert_airports.xlsx")
 
 correct_counties <- function(dat){
   dat %>% 

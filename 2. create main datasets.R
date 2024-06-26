@@ -23,8 +23,8 @@ getwd()
 
 # Uncomment as necessary --------------------------------------------------
 
-source("0. ucmr3 processing.R")
-source("1. demo processing.R")
+# source("0. ucmr3 processing.R")
+# source("1. demo processing.R")
 
 ## Quick function: 
 classify_state <- function(dat, state_col){
