@@ -55,12 +55,12 @@ nested_data_for_suppreg1_add_form <- nested_data_for_suppreg1 %>%
   #                               str_detect(name, "pfas") ~ paste(my_formula, "+  n_MFTA_airport_bin + src_epa_present_bin"), 
   #                               TRUE ~ "9999")) %>%
   # {stopifnot(nrow(filter(., my_formula == "9999"))==0); .;} %>%
-  mutate(my_formula = paste(my_formula, " + (1|state)")) %>%
-  mutate(my_formula = if_else(
-    name == "det_dca", 
-    str_remove(my_formula, "size \\+ "), 
-    my_formula
-  ))
+  mutate(my_formula = paste(my_formula, " + (1|state)")) # %>%
+  # mutate(my_formula = if_else(
+  #   name == "det_dca", 
+  #   str_remove(my_formula, "size \\+ "), 
+  #   my_formula
+  # ))
 
 ## Filter the nested data to include the outcomes of interest only. 
 # Note: Only 1 PWS (PWSID: IL2010300) had a sample of 1,1-DCA with conc > health guidance value. 
@@ -146,7 +146,7 @@ suppl1_res_clean_estimates <- suppl1_reg_results %>%
 # Order the table, almost ready to export 
 
 suppl1_res_clean_tidy <- suppl1_res_clean_estimates %>%
-  select(name, term, n, estimate_edit, p_format, p_star) %>%
+  select(name, add_source, term, n, estimate_edit, p_format, p_star) %>%
   mutate(term = factor(term, levels = TableOrder_vec2)) %>%
   arrange(term)
 
@@ -377,111 +377,11 @@ suppl2_reg_results_export <- suppl2_reg_results_tidy %>%
 # SAVE HERE:
 # write.csv(
 #   suppl2_reg_results_export,
-#   paste0("results/SuppTable. Adj model results with & without source terms.csv_",
+#   paste0("results/SuppTable. Adj model results diff SES variables.csv_",
 #   Sys.Date(), ".csv"
 #   )
 # )
   
-# write.csv(d_list2[[1]],
-#           paste0("outputs/", Sys.Date(), " - reg results pov.csv"))
-# write.csv(d_list2[[2]],
-#           paste0("outputs/", Sys.Date(), " - reg results uninsur.csv"))
-# write.csv(d_list2[[3]],
-#           paste0("outputs/", Sys.Date(), " - reg results hmown.csv"))
-
-
-suppl2_reg_results_det_any <- bind_rows(
-  glmer(paste("det_any", povFormula, "n_fac_any_bin + (1|state)"), data = data_for_univarSES_reg, family = 'binomial') %>%
-    tidy(exponentiate = TRUE, conf.level = 0.95, conf.int = TRUE) %>%
-    mutate(model_run = "poverty"), 
-  glmer(paste("det_any", insuranceFormula, "n_fac_any_bin + (1|state)"), data = data_for_univarSES_reg, family = 'binomial') %>%
-    tidy(exponentiate = TRUE, conf.level = 0.95, conf.int = TRUE) %>%
-    mutate(model_run = "insurance status"), 
-  glmer(paste("det_any", hmownFormula, "n_fac_any_bin + (1|state)"), data = data_for_univarSES_reg, family = 'binomial') %>%
-    tidy(exponentiate = TRUE, conf.level = 0.95, conf.int = TRUE) %>%
-    mutate(model_run = "homeownership"), 
-  glmer(paste("det_any", combinedFormula, "n_fac_any_bin + (1|state)"), data = data_for_univarSES_reg, family = 'binomial') %>%
-    tidy(exponentiate = TRUE, conf.level = 0.95, conf.int = TRUE) %>%
-    mutate(model_run = "combined uniSES"), 
-)
-
-suppl2_reg_results_det_any
-
-d_list2 <- lapply(d_list, function(x) 
-  x %>% 
-    filter(str_detect(term, "Intercept", negate = TRUE)) %>%
-    select(term, name, p.value, estimate, conf.low, conf.high) %>% 
-    mutate(perc_change = 100*(estimate - 1), 
-           perc_change_LOW = 100*(conf.low - 1),
-           perc_change_UPP = 100*(conf.high - 1)) %>%
-    mutate_at(vars(matches("perc")), round, 1) %>%
-    mutate_at(vars(matches("perc")), formatC, format = "g") %>%
-    mutate(fmt_perc_change = 
-             paste0(perc_change, " (", perc_change_LOW, ", ", perc_change_UPP, ")")) %>%
-    mutate(p_stars = stars.pval(p.value)) %>%
-    # mutate(p_stars = case_when(p.value < 0.001 ~ "**", 
-    #                            p.value >= 0.001 & p.value < 0.05 ~ "*", 
-    #                            p.value >= 0.05 & p.value < 0.10 ~ "+", 
-    #                            p.value >= 0.10 ~ " ", 
-    #                            TRUE ~ "n.s.")) %>%
-    mutate(p_clean = ifelse(p.value < 0.001, "<0.001", 
-                            paste(round(p.value, 2)))) %>%
-    select(term, name,
-           fmt_perc_change,
-           p_stars, p_clean) %>%
-    mutate(term = factor(term, levels = TableOrder_vec2)) %>%
-    mutate(fmt_perc_change = paste0(fmt_perc_change, " ", p_stars)) %>% 
-    arrange(term) %>%
-    pivot_wider(id_cols = term, 
-                names_from = name, 
-                values_from = fmt_perc_change)
-)
-
-###### Plot of demographic coefficients in adjusted models with different SES measures
-
-#+ This produces a facet_wrap figure of percent change estimates for four primary
-#+ community demographics: the SES variable of interest, % Hispanic, % NH Black,
-#+ % urbanicity. The top header columns are the outcomes any det, any viol, 1,4-d, 
-#+ 1,1-DCE, HCFC-22, and PFAS. X-axis is percent change estimate; y-axis is the 
-#+ SES indicators. 
-
-ggplot(suppl2_reg_results_det_any %>%
-         filter(model_run != "combined uniSES") %>%
-         filter(term %in% c("perc_hisp_any", "perc_black_nohisp", "mdi_rate", "perc_urban", 
-                            "perc_pov_ppl", "perc_uninsur", "perc_hmown")) %>%
-         mutate(term2 = ifelse(term %in% c("perc_pov_ppl", "perc_uninsur", "perc_hmown", "mdi_rate"), 
-                               "perc_ses", term)) %>%
-         mutate(term2 = factor(term2, 
-                               levels = c("perc_hisp_any", "perc_black_nohisp", "perc_urban", "perc_ses"), 
-                               labels = c("(a) Percent Hispanic", 
-                                          "(b) Percent non-Hispanic Black", 
-                                          "(c) Percent urban households", 
-                                          "(d) Percent SES variable"
-                               ))) %>%
-         mutate(model_run = factor(model_run, 
-                                   levels = c("mdi", "poverty", "insurance status", "homeownership"), 
-                                   labels = c("Percent deprived", "Percent poverty", "Percent uninsured", "Percent homeownership"))) %>%
-         mutate(perc_change = 100*(estimate - 1), 
-                perc_change_LOW = 100*(conf.low - 1),
-                perc_change_UPP = 100*(conf.high - 1)) %>%
-         mutate(stars = stars.pval(p.value)),
-       # mutate(stars = case_when(p.value < 0.001 ~ "**", 
-       #                          p.value >= 0.001 & p.value < 0.05 ~ "*", 
-       #                          p.value >= 0.05 & p.value < 0.10 ~ "+", 
-       #                          TRUE ~ "")), 
-       aes(x = model_run, y = perc_change)) +
-  geom_pointrange(aes(ymin = perc_change_LOW, ymax = perc_change_UPP)) + 
-  geom_text(aes(label = stars), nudge_y = 2) + 
-  scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) + 
-  geom_hline(yintercept = 0) + 
-  facet_wrap(~term2) + 
-  labs(x = "", y = "Percent change (95% CI)") +
-  theme_bw() +
-  theme(text = element_text(size = 15), 
-        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
-
-# ggsave(filename = paste0("outputs/", Sys.Date(), "- Different SES variables.pdf"),
-#        height = 6, width = 6)
 
 
 ###############################################################################
@@ -489,6 +389,108 @@ ggplot(suppl2_reg_results_det_any %>%
 ###############################################################################
 
 # Archive ----
+
+# write.csv(d_list2[[1]],
+#           paste0("outputs/", Sys.Date(), " - reg results pov.csv"))
+# write.csv(d_list2[[2]],
+#           paste0("outputs/", Sys.Date(), " - reg results uninsur.csv"))
+# write.csv(d_list2[[3]],
+#           paste0("outputs/", Sys.Date(), " - reg results hmown.csv"))
+# 
+# 
+# suppl2_reg_results_det_any <- bind_rows(
+#   glmer(paste("det_any", povFormula, "n_fac_any_bin + (1|state)"), data = data_for_univarSES_reg, family = 'binomial') %>%
+#     tidy(exponentiate = TRUE, conf.level = 0.95, conf.int = TRUE) %>%
+#     mutate(model_run = "poverty"), 
+#   glmer(paste("det_any", insuranceFormula, "n_fac_any_bin + (1|state)"), data = data_for_univarSES_reg, family = 'binomial') %>%
+#     tidy(exponentiate = TRUE, conf.level = 0.95, conf.int = TRUE) %>%
+#     mutate(model_run = "insurance status"), 
+#   glmer(paste("det_any", hmownFormula, "n_fac_any_bin + (1|state)"), data = data_for_univarSES_reg, family = 'binomial') %>%
+#     tidy(exponentiate = TRUE, conf.level = 0.95, conf.int = TRUE) %>%
+#     mutate(model_run = "homeownership"), 
+#   glmer(paste("det_any", combinedFormula, "n_fac_any_bin + (1|state)"), data = data_for_univarSES_reg, family = 'binomial') %>%
+#     tidy(exponentiate = TRUE, conf.level = 0.95, conf.int = TRUE) %>%
+#     mutate(model_run = "combined uniSES"), 
+# )
+# 
+# suppl2_reg_results_det_any
+# 
+# d_list2 <- lapply(d_list, function(x) 
+#   x %>% 
+#     filter(str_detect(term, "Intercept", negate = TRUE)) %>%
+#     select(term, name, p.value, estimate, conf.low, conf.high) %>% 
+#     mutate(perc_change = 100*(estimate - 1), 
+#            perc_change_LOW = 100*(conf.low - 1),
+#            perc_change_UPP = 100*(conf.high - 1)) %>%
+#     mutate_at(vars(matches("perc")), round, 1) %>%
+#     mutate_at(vars(matches("perc")), formatC, format = "g") %>%
+#     mutate(fmt_perc_change = 
+#              paste0(perc_change, " (", perc_change_LOW, ", ", perc_change_UPP, ")")) %>%
+#     mutate(p_stars = stars.pval(p.value)) %>%
+#     # mutate(p_stars = case_when(p.value < 0.001 ~ "**", 
+#     #                            p.value >= 0.001 & p.value < 0.05 ~ "*", 
+#     #                            p.value >= 0.05 & p.value < 0.10 ~ "+", 
+#     #                            p.value >= 0.10 ~ " ", 
+#     #                            TRUE ~ "n.s.")) %>%
+#     mutate(p_clean = ifelse(p.value < 0.001, "<0.001", 
+#                             paste(round(p.value, 2)))) %>%
+#     select(term, name,
+#            fmt_perc_change,
+#            p_stars, p_clean) %>%
+#     mutate(term = factor(term, levels = TableOrder_vec2)) %>%
+#     mutate(fmt_perc_change = paste0(fmt_perc_change, " ", p_stars)) %>% 
+#     arrange(term) %>%
+#     pivot_wider(id_cols = term, 
+#                 names_from = name, 
+#                 values_from = fmt_perc_change)
+# )
+# 
+# ###### Plot of demographic coefficients in adjusted models with different SES measures
+# 
+# #+ This produces a facet_wrap figure of percent change estimates for four primary
+# #+ community demographics: the SES variable of interest, % Hispanic, % NH Black,
+# #+ % urbanicity. The top header columns are the outcomes any det, any viol, 1,4-d, 
+# #+ 1,1-DCE, HCFC-22, and PFAS. X-axis is percent change estimate; y-axis is the 
+# #+ SES indicators. 
+# 
+# ggplot(suppl2_reg_results_det_any %>%
+#          filter(model_run != "combined uniSES") %>%
+#          filter(term %in% c("perc_hisp_any", "perc_black_nohisp", "mdi_rate", "perc_urban", 
+#                             "perc_pov_ppl", "perc_uninsur", "perc_hmown")) %>%
+#          mutate(term2 = ifelse(term %in% c("perc_pov_ppl", "perc_uninsur", "perc_hmown", "mdi_rate"), 
+#                                "perc_ses", term)) %>%
+#          mutate(term2 = factor(term2, 
+#                                levels = c("perc_hisp_any", "perc_black_nohisp", "perc_urban", "perc_ses"), 
+#                                labels = c("(a) Percent Hispanic", 
+#                                           "(b) Percent non-Hispanic Black", 
+#                                           "(c) Percent urban households", 
+#                                           "(d) Percent SES variable"
+#                                ))) %>%
+#          mutate(model_run = factor(model_run, 
+#                                    levels = c("mdi", "poverty", "insurance status", "homeownership"), 
+#                                    labels = c("Percent deprived", "Percent poverty", "Percent uninsured", "Percent homeownership"))) %>%
+#          mutate(perc_change = 100*(estimate - 1), 
+#                 perc_change_LOW = 100*(conf.low - 1),
+#                 perc_change_UPP = 100*(conf.high - 1)) %>%
+#          mutate(stars = stars.pval(p.value)),
+#        # mutate(stars = case_when(p.value < 0.001 ~ "**", 
+#        #                          p.value >= 0.001 & p.value < 0.05 ~ "*", 
+#        #                          p.value >= 0.05 & p.value < 0.10 ~ "+", 
+#        #                          TRUE ~ "")), 
+#        aes(x = model_run, y = perc_change)) +
+#   geom_pointrange(aes(ymin = perc_change_LOW, ymax = perc_change_UPP)) + 
+#   geom_text(aes(label = stars), nudge_y = 2) + 
+#   scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) + 
+#   geom_hline(yintercept = 0) + 
+#   facet_wrap(~term2) + 
+#   labs(x = "", y = "Percent change (95% CI)") +
+#   theme_bw() +
+#   theme(text = element_text(size = 15), 
+#         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+
+# ggsave(filename = paste0("outputs/", Sys.Date(), "- Different SES variables.pdf"),
+#        height = 6, width = 6)
+
 # 
 # # colnames(dat_clean)
 # 
