@@ -140,9 +140,16 @@ crude_results_cat
 
 # clean2() function is simple (should be loaded)
 clean2 <- function(dat){
-  dat %>%
-    filter(term != "(Intercept)") %>%
-    select(name, pred, n, term, estimate, p.value)
+  dat %>% 
+    filter(!str_detect(term, "Intercept")) %>%
+    mutate(estimate = format(round(estimate, 2), nsmall = 2), 
+           conf.low = format(round(conf.low, 2), nsmall = 2),
+           conf.high = format(round(conf.high, 2), nsmall = 2), 
+           estimate_edit = paste0(estimate, " (", conf.low, ", ", conf.high, ")"), 
+           p_star = stars.pval(p.value), 
+           p_format = 
+             format.pval(p.value, eps = 0.001, nsmall = 2, digits = 2)
+    )
 }
 
 # Order the explantory variables (predictors):
@@ -168,30 +175,16 @@ TableOrder_vec <-
   )
 
 # Clean and merge
-crcat <- clean2(crude_results_cat) 
-crcont <- clean2(crude_results_cont)
-crude_results <- bind_rows(crcat, crcont) 
+crcat <- clean2(crude_results_cat) %>% select(-data)
+crcont <- clean2(crude_results_cont) %>% select(-data)
+crude_results_all <- bind_rows(crcat, crcont) 
 
 # Visual inspection
-crude_results
+crude_results_all
 
 # Tidy formatting
-crude_results_tidy <- crude_results %>%
-  mutate(p_stars = stars.pval(p.value)) %>% 
-  mutate(p.value = ifelse(
-    p.value < 0.001, 
-    "<0.001", 
-    paste(round(p.value, 2)
-          )
-    )
-  ) %>%
+crude_results_tidy <- crude_results_all %>%
   mutate(pred = factor(pred, levels = TableOrder_vec)) %>%
-  mutate(estimate = round(estimate, 2)) %>%
-  # mutate(
-  #   fmt_perc_change = custom_trimws(fmt_perc_change),
-  #   fmt_perc_change = str_replace(fmt_perc_change, "NA|Inf|\\+", as.character(NA))
-  # ) %>%
-  rename(estimate = estimate, p.value = p.value, star = p_stars) %>%
   arrange(pred)
 
 # Visual inspection
@@ -204,7 +197,9 @@ crude_results_tidy
 crude_results_export <- crude_results_tidy %>%
   pivot_wider(id_cols = c(pred, term), 
               names_from = c(name),
-              values_from = c(estimate, p.value, star),
+              values_from = c(estimate_edit, 
+                              p_format, 
+                              p_star),
               names_glue = "{name}_{.value}") %>%
   select(pred, term, 
          starts_with("det_any"), 
@@ -221,7 +216,9 @@ crude_results_export <- crude_results_tidy %>%
 crude_results_export
 
 ### SAVE OUTPUTS HERE:
-# write.csv(crude_results_export, paste0("results/Table 3. Crude Results_", Sys.Date(), ".csv"))
+write.csv(crude_results_export, 
+          paste0("results/Table 3. Crude Results_", 
+                 Sys.Date(), ".csv"))
 
 ## playing with flextable
 
@@ -409,7 +406,7 @@ adjusted_results_export <- adj_res_clean_tidy %>%
   )
 
 # SAVE HERE: 
-# write.csv(adjusted_results_export, 
+# write.csv(adjusted_results_export,
 #           paste0("results/Table 4. Adjusted Logistic Results_",
 #                  Sys.Date(),
 #                  ".csv")
