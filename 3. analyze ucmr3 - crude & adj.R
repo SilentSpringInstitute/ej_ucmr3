@@ -216,9 +216,9 @@ crude_results_export <- crude_results_tidy %>%
 crude_results_export
 
 ### SAVE OUTPUTS HERE:
-write.csv(crude_results_export, 
-          paste0("results/Table 3. Crude Results_", 
-                 Sys.Date(), ".csv"))
+# write.csv(crude_results_export, 
+#           paste0("results/Table 3. Crude Results_", 
+#                  Sys.Date(), ".csv"))
 
 ## playing with flextable
 
