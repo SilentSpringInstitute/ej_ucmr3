@@ -5,7 +5,8 @@
 
 # Also run script "3. analyze ucmr3 - crude & adj.R" to get adj_results_clean. 
 # source("3. analyze ucmr3 - crude & adj.R")
-adj_results_clean
+adj_res_clean_tidy
+adjusted_results_export
 
 library(tidyverse)
 library(lme4)
@@ -336,7 +337,7 @@ clean3 <- function(dat){
     mutate(estimate = format(round(estimate, 2), nsmall = 2), 
            conf.low = format(round(conf.low, 2), nsmall = 2),
            conf.high = format(round(conf.high, 2), nsmall = 2), 
-           estimate_edit = paste0(estimate, " (", conf.low, ", ", conf.high, ")"), 
+           estimate_edit = paste0(estimate, " \n(", conf.low, ", ", conf.high, ")"), 
            p_star = stars.pval(p.value), 
            p_format = 
              format.pval(p.value, eps = 0.001, nsmall = 2, digits = 2)
@@ -381,7 +382,7 @@ suppl2_reg_results_export <- suppl2_reg_results_tidy %>%
 #   Sys.Date(), ".csv"
 #   )
 # )
-  
+
 
 
 ###############################################################################
