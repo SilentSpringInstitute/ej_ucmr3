@@ -4,48 +4,57 @@
 ## Dataframe of interest: each row represents one PWSID with all relevant vars
 ## Dataframe of interest: each row represents a restricted dataset (no missing FIPS codes)
 
+library(tidyverse)
+
 workingdir <- dirname(rstudioapi::getActiveDocumentContext()$path)
 setwd(workingdir)
 #setwd("..")
 getwd()
 
-# today_date <- format(Sys.Date(), "%Y-%m-%d")
-# my_file_path <- paste(getwd(), "outputs", Sys.Date(), sep = "/")
-# my_file_path
-# 
-# if (dir.exists(my_file_path)) {
-#   cat("Folder", today_date, "already exists.\n")
-# } else {
-#   dir.create(my_file_path)
-#   cat("Folder", today_date, "created successfully.\n")
-# }
-
-
-# Uncomment as necessary --------------------------------------------------
+# Start here --------------------------------------------------
 
 # source("0. ucmr3 processing.R")
 # source("1. demo processing.R")
 
-## Quick function: 
-classify_state <- function(dat, state_col){
+# This function classifies whether a state belongs to the a state (or D.C.), 
+# a U.S. territory, or a tribal area. 
+
+classify_state <- function(dat, state_col) {
   dat %>%
-    mutate(state_status = case_when(!!sym(state_col) %in% c(state.abb, "DC") ~ "state",
-                                    !!sym(state_col) %in% c("1", "10", "5", "6", 
-                                                            "8", "9", "NN") ~ "tribe", 
-                                    !!sym(state_col) %in% c("AS", "GU", "MP", 
-                                                            "PR", "VI") ~ "territory", 
-                                    TRUE ~ "oops")) %>%
-    {stopifnot(nrow(filter(., state_status == "oops")) == 0); .;}
+    mutate(
+      state_status = case_when(
+        !!sym(state_col) %in% c(state.abb, "DC") ~ "state", 
+        !!sym(state_col) %in% c("1", "10", "5", "6", "8", "9", "NN") ~ "tribe",
+        !!sym(state_col) %in% c("AS", "GU", "MP", "PR", "VI") ~ "territory",
+        TRUE ~ "oops"
+      )
+    ) %>%
+    {
+      stopifnot(nrow(filter(., state_status == "oops")) == 0)
+      .
+    }
 }
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 1. INITIAL MERGE --------------------------------------------------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# This merges FIPS codes with census info
-fips_cn15 <- fips %>% left_join(cn15)
+# Data sources: 
+# fips: dataset of PWSID linked to SDWIS data (popn served) and county ids (GEO.id2) 
+# cn15: dataset of county-level demographics and pollution sources
 
-colnames(fips_cn15)
+# length(unique(fips$PWSID)) == nrow(fips)
+# fips %>% count(PWSID) %>% filter(n > 1) # systems that serve >1 county
+
+# length(unique(cn15$GEO.id2)) == nrow(cn15)
+# cn15 %>% count(GEO.id2) %>% filter(n > 1) # county #34015 (gloucester county, new jersey) duplicated
+# cn15 %>% filter(GEO.id2=="34015") %>% distinct()
+# distinct(cn15) %>% nrow() == nrow(cn15) - 1
+cn15 <- distinct(cn15)
+
+# This merges FIPS codes with census info
+fips_cn15 <- fips %>% left_join(cn15, relationship = "many-to-many")
+
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # FIPS_CN15.2 == demographics (e.g., perc_hisp) ------------
@@ -108,32 +117,21 @@ fips_cn15.4 <- fips_cn15 %>%
 # UCMR3.6 == PWS chars from UCMR (e.g., size, pws_type, state, n_samples) ------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# ucmr3.6 <- ucmr3.0 %>% 
-#   distinct(PWSID, Size, FacilityWaterType, SamplePointID, State) %>%
-#   rename(size = 2, pws_type = 3, state = State) %>%
-#   group_by(PWSID) %>% 
-#   mutate(pws_type = ifelse(pws_type %in% c("MX", "GU") |
-#                              length(unique(pws_type)) > 1, "MX", pws_type), 
-#          n_samples = length(unique(SamplePointID))) %>%
-#   select(-SamplePointID) %>%
-#   distinct()
-
 ucmr3.6 <- ucmr3.0 %>% 
   distinct(PWSID, Size, FacilityWaterType, FacilityID, FacilityName, SamplePointID, SamplePointName, CollectionDate, State) %>%
   rename(size = 2, pws_type = 3, state = State) %>%
   mutate(sample_id_new = paste(FacilityID, FacilityName, SamplePointID, SamplePointName, CollectionDate, sep = "_")) %>%
-  group_by(PWSID, size, state) %>% 
-  summarise(pws_type = ifelse(pws_type %in% c("MX", "GU") |
-                                length(unique(pws_type)) > 1, "MX", pws_type), 
-            n_samples = n_distinct(sample_id_new)) %>%
-  distinct()
+  group_by(PWSID, size, state) %>%
+  summarise(
+    pws_type = case_when(
+      any(pws_type %in% c("MX", "GU")) | n_distinct(pws_type) > 1 ~ "MX",
+      all(pws_type == "GW") ~ "GW", 
+      all(pws_type == "SW") ~ "SW", 
+      TRUE ~ "oops"), 
+    n_samples = n_distinct(sample_id_new)
+  )
 
-# ucmr3.6 %>% left_join(ucmr3.6.1 %>% rename(test = n_samples))
-# 
-# ucmr3.0 %>%
-#   filter(PWSID == "MI0004370") %>%
-#   distinct(PWSID, FacilityID, FacilityName, SamplePointID, SamplePointName, SampleID, CollectionDate)
-
+# check
 ucmr3.0 %>% 
   distinct(PWSID, FacilityWaterType) %>%
   group_by(PWSID) %>% mutate(n = n()) %>% filter(n > 1)
@@ -154,24 +152,16 @@ stopifnot(main %>%
             filter(n > 1) %>%
             nrow() == 0)
 
+# check
 ucmr3.5 %>% 
   left_join(ucmr3.6) %>%
-  left_join(fips_cn15.2) %>% # demographics (e.g., perc_hisp)
+  left_join(fips_cn15.2) %>% 
   classify_state(state_col = 'state') %>%
-  #filter(state_status == 'state') %>%
-  #filter(!is.na(mdi_rate)) %>%
   select(PWSID, starts_with("det_")) %>%
   pivot_longer(cols = starts_with("det_")) %>%
   group_by(name) %>%
   summarise(n = n(), 
             count = sum(!is.na(value)))
-  
-
-str(main) 
-rev(colnames(main))
-unique(main$size); unique(main$pws_type); unique(main$owner_type)
-
-
 
 dat_ucmr3 <- main %>%
   mutate(across(starts_with("det_"), as.factor), 
@@ -189,7 +179,7 @@ dat_ucmr3 <- main %>%
 # colnames(dat_ucmr3)
 # summary(dat_ucmr3)
 
-# UNCOMMENT TO SAVE
+# UNCOMMENT TO SAVE ------------
 # write.csv(dat_ucmr3, paste0("processed/main-ucmr3-dataset-merged_", Sys.Date(), ".csv"))
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
