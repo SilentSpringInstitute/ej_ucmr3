@@ -1,6 +1,16 @@
 # 6/26/24 
 # AM 
-# Compare representativeness 
+# Compare representative-ness 
+
+# Start here ------------------------------------------------------------------
+# 
+# If not already in the working environment, run:
+# source("3. analyze ucmr3 - bivar comparisons (t-tests, Exact test).R")
+# to identify which counties were included in the paper
+
+library(tidyverse)
+library(patchwork)
+library(janitor)
 
 # Water systems ---------------------------------------------------------------
 
@@ -9,8 +19,24 @@
 # Active and inactive PWSs in 2013 Q4
 # Our main dataset (dat_clean)
 
-dat_clean
+# https://echo.epa.gov/tools/data-downloads/sdwa-download-summary
 
+# Systems = Active (A), Changed from public to non-public (N), Merged with another system (M)
+
+sdwis2013 <- read_xlsx("raw/Water System Detail_20240624.xlsx")
+
+colnames <- as.character(as.vector(sdwis2013[4,]))
+colnames <- str_to_lower(colnames)
+colnames <- str_replace_all(colnames, " ", "_")
+colnames
+
+sdwis2013 <- sdwis2013[-(1:4),]
+colnames(sdwis2013) <- colnames
+
+dim(sdwis2013)
+str(sdwis2013)
+
+unique(sdwis2013$activity_status)
 
 # Counties --------------------------------------------------------------------
 
@@ -20,9 +46,6 @@ county_ids_vec
 str(cn15)
 # check if cn15 has one line per county.
 stopifnot(nrow(cn15) == nrow(distinct(cn15)))
-
-# restrict to counties in the main UCMR3 sample.
-cn15.1 <- cn15 %>% filter(GEO.id2 %in% county_ids_vec)
 
 cn15 %>% 
   mutate(in_paper = if_else(GEO.id2 %in% county_ids_vec, "yes", "no")) %>%
@@ -44,8 +67,6 @@ cn15 %>%
     iqr_urban = IQR(perc_urban)
   )
 
-boxplot(cn15$perc_urban)
-
 make_county_plot <- function(demo){
   cn15 %>%
   mutate(in_paper = if_else(GEO.id2 %in% county_ids_vec, "yes", "no")) %>%
@@ -54,7 +75,7 @@ make_county_plot <- function(demo){
   ggplot(aes(x = in_paper, y = !!enquo(demo))) + 
   geom_jitter(shape = 1, 
               color = "grey75") +
-  stat_summary(fun.y = "median",
+  stat_summary(fun = "median",
                fun.min = "median",
                fun.max= "median", 
                size= 0.3, 
@@ -76,5 +97,4 @@ p2 <- make_county_plot(demo = perc_black_nohisp)  + labs(x = "", y = "", title =
 p3 <- make_county_plot(demo = perc_urban) + labs(x = "", y = "", title = "Percent urban")
 p4 <- make_county_plot(demo = mdi_rate) + labs(x = "", y = "", title = "Percent deprived")
 
-library(patchwork)
 p1 + p2 + p3 + p4 + plot_layout(nrow = 1)
