@@ -13,8 +13,8 @@ getwd()
 
 # Start here --------------------------------------------------
 
-# source("0. ucmr3 processing.R")
-# source("1. demo processing.R")
+source("0. ucmr3 processing.R")
+source("1. demo processing.R")
 
 # This function classifies whether a state belongs to the a state (or D.C.), 
 # a U.S. territory, or a tribal area. 
