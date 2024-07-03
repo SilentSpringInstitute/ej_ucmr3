@@ -92,46 +92,46 @@ x.label <- grid::textGrob("County linked to a UCMR 3 water system", vjust = -1)
 gridExtra::grid.arrange(plot, bottom = x.label)
 
 # PWS types in the UCMR 3 -----------
-
-sys_in_ucmr3 <- dat_ucmr3 %>% filter(!is.na(det_pfas)) %>% pull(PWSID)
-length(sys_in_ucmr3) #4920
-sdwis2013 <- read_excel("raw/Water System Detail_20240624.xlsx")
-
-clean_colnames <- sdwis2013[4,] %>% pivot_longer(cols = everything()) %>% pull(value)
-clean_colnames <- str_to_lower(clean_colnames)
-clean_colnames <- str_replace_all(clean_colnames, " ", "_")
-
-sdwis2013_clean <- sdwis2013[-c(1:4),]
-colnames(sdwis2013_clean) <- clean_colnames
-sdwis2013_clean
-
-dat_clean %>% 
-  tabyl(size) %>%
-  adorn_totals()
-
-colnames(allsdwis3)
-
-sdwis2013_clean %>% 
-  filter(pws_id %in% sys_in_ucmr3) %>%
-  nrow()
-  
-allsdwis3 %>% 
-  filter(PWSID %in% sys_in_ucmr3) %>%
-  nrow()
-
-sdwis2013_clean %>% 
-  filter(pws_id %in% sys_in_ucmr3) %>%
-  mutate(size = if_else(population_served_count >= 10000, "L", "S")) %>%
-  count(pws_type)
-
-allsdwis3 %>% 
-  filter(PWSID %in% dat_clean$PWSID) %>%
-  mutate(size = if_else(WS.POPULATION_SERVED_COUNT >= 10000, "L", "S")) %>%
-  count(size, PWS_TYPE_CODE)
-
-summary(dat_clean$perc_urban)
-hist(dat_clean$perc_urban)
-
-dat_clean %>%
-  mutate(is_zero = if_else(perc_urban == 0, 'yes', 'no')) %>% 
-  count(is_zero)
+# 
+# sys_in_ucmr3 <- dat_ucmr3 %>% filter(!is.na(det_pfas)) %>% pull(PWSID)
+# length(sys_in_ucmr3) #4920
+# sdwis2013 <- read_excel("raw/Water System Detail_20240624.xlsx")
+# 
+# clean_colnames <- sdwis2013[4,] %>% pivot_longer(cols = everything()) %>% pull(value)
+# clean_colnames <- str_to_lower(clean_colnames)
+# clean_colnames <- str_replace_all(clean_colnames, " ", "_")
+# 
+# sdwis2013_clean <- sdwis2013[-c(1:4),]
+# colnames(sdwis2013_clean) <- clean_colnames
+# sdwis2013_clean
+# 
+# dat_clean %>% 
+#   tabyl(size) %>%
+#   adorn_totals()
+# 
+# colnames(allsdwis3)
+# 
+# sdwis2013_clean %>% 
+#   filter(pws_id %in% sys_in_ucmr3) %>%
+#   nrow()
+#   
+# allsdwis3 %>% 
+#   filter(PWSID %in% sys_in_ucmr3) %>%
+#   nrow()
+# 
+# sdwis2013_clean %>% 
+#   filter(pws_id %in% sys_in_ucmr3) %>%
+#   mutate(size = if_else(population_served_count >= 10000, "L", "S")) %>%
+#   count(pws_type)
+# 
+# allsdwis3 %>% 
+#   filter(PWSID %in% dat_clean$PWSID) %>%
+#   mutate(size = if_else(WS.POPULATION_SERVED_COUNT >= 10000, "L", "S")) %>%
+#   count(size, PWS_TYPE_CODE)
+# 
+# summary(dat_clean$perc_urban)
+# hist(dat_clean$perc_urban)
+# 
+# dat_clean %>%
+#   mutate(is_zero = if_else(perc_urban == 0, 'yes', 'no')) %>% 
+#   count(is_zero)
