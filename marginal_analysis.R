@@ -96,7 +96,7 @@ ave_effect * (as.numeric(q3_hisp - q1_hisp)) * 100
 # 5.282619 
 ave_effect * (sd_hisp) * 100
 # 5.358195 
-
+round(5.358195, 1)
 
 # Archive (do not run) ----
 
