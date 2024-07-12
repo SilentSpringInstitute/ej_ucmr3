@@ -1,23 +1,34 @@
-
-# If starting from here: run script 2
-source("2. create main datasets.R")
-
 library(tidyverse)
 library(flextable)
 library(ggplot2)
 library(broom)
 library(ggh4x)
 
-# dat_clean   = df of 4808 PWSs (restricted to PWSs w/ MDI data)
-dat_clean
+## If you are running code within this repo, download the relevant data from 
+## this following script that creates the main dataset
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# FIGURE 1 AND TABLE. Unequal variances t-tests -----------------------------
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#+ Comparison of mean-county univariate SES indicators between PWSs with and without
-#+ detection of unregulated contaminants and with or without exceedances of
-#+ health reference levels. Unequal variances t-test used to assess 
-#+ differences in averages.
+## ============================================================================
+## download the data 
+## ============================================================================
+## "dat_clean" is the data of 4,808 UCMR 3 public water systems. Each system 
+## is categorized by system size and source water type. Each system was previously
+## linked to county-level data (perc Hispanic, perc Black, perc urban, perc deprived, 
+## wastewater flow, the presence of any TRI, presence of any 1,4-d TRI, presence
+## of any CFC TRI, presence of any chlorinated solvent TRI, presence of any 
+## major PFAS industry, and presence of an AFFF-certified airport or MFTA. 
+## A system classified as "present" = is linked to >=1 county with >=1 facility 
+
+source("2. create main datasets.R")
+
+stopifnot(nrow(dat_clean) == 4808)
+
+## ============================================================================
+## unequal variance t-test
+## 
+## comparing average levels of demographics between (a) water systems that 
+## detected >=1 target contaminant versus 0 contaminants and (b) water systems 
+## that exceeded >=1 EPA health benchmark level for PFAS, 1,4-d, or 1,1-DCA
+## ============================================================================
 
 tRes <- dat_clean %>% 
   select(PWSID, det_any, viol_any, 
@@ -180,13 +191,13 @@ fdemoMeans
 #   rename(p_value = value) %>%
 #   pivot_wider(names_from = outcome, names_prefix = "p_", values_from = p_value)
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# TRI facility and demographics among COUNTIES -------------------------------
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-# This section introduces a new analysis: evaluate TRI facility distributions
-# among counties (not water systems) to test if counties with TRI facilities have
-# higher %His, %Black, %deprived, %urban, etc.
+## ============================================================================
+## unequal variance t-test
+## 
+## comparing average levels of demographics between (a) counties that 
+## had (a) >=1 criteria TRI fac vs not; (b) 1,4-dioxane TRI fac; (c) CFC TRI fac; 
+## (d) Chlorinated solvent fac; (e) major PFAS industry or PFAS airport/MFTA
+## ============================================================================
 
 # The main dataset, dat_clean, does not have a column of county_ids. 
 # This is makes a list of PWSIDs and their associated counties. 
