@@ -33,26 +33,40 @@ stopifnot(nrow(dat_clean) == 4808)
 ## (d) Chlorinated solvent fac; (e) major PFAS industry or PFAS airport/MFTA
 ## ============================================================================
 
+# filter for systems that were part of the UCMR 3
+# rename GEO.id2 to county_id
+# calculate percent homeownership as proportion of 
 pwsid_county_link <- fips_cn15 %>% 
-  # filter for systems that were part of the UCMR 3
   filter(PWSID %in% dat_clean$PWSID) %>% 
-  rename(county_id = GEO.id2)
+  rename(county_id = GEO.id2) %>%
+  mutate(perc_hmown = 100*owned.house/all.house14)
+
+pwsid_county_link %>% 
+  select(county_id, perc_hmown, perc_pov_ppl, perc_urban, perc_hisp_any)
 
 # check for duplicate entries of PWS-county combinations
 stopifnot(nrow(pwsid_county_link %>% count(PWSID, county_id) %>% filter(n > 1))==0)
 
-## counties are duplicated in the data since it matched counties 
-## with water systems. systems may serve >1 counties and 
-## multiple systems can be in the same county
-## use distinct
+## counties are duplicated in the data since it can match with many systems. 
+## for example, "calhoun county, alabama" has 41 different water systems and 
+## 4 of them were part of the UCMR 3.
+## Use distinct() to capture unique combinations of county id's and the corresponding
+## demographic values, then check for duplicates.
+
+# pwsid_county_link %>% 
+#   count(county_id) %>% 
+#   filter(n > 1)
+# 
+# fips_cn15 %>% filter(GEO.id2 == "01015") %>% view()
 
 county.data <- pwsid_county_link %>% 
   distinct(county_id, perc_hisp_any, perc_black_nohisp, mdi_rate, perc_urban, 
+           perc_pov_ppl, perc_uninsur, perc_hmown,
          n_fac_any, n_fac_diox, n_fac_cfc, n_fac_chlor_solv, 
          n_MFTA, n_airports, src_epa_present) 
 county.data
 
-# each row is one unique county
+# check for duplicates - each row is one unique county
 stopifnot(nrow(county.data) == length(unique(county.data$county_id)))
 
 # no missing data 
@@ -73,6 +87,8 @@ county.data1 <- county.data %>%
   pivot_longer(cols = c(starts_with("n_fac_"), "bin_any_pfas"), 
                names_to = "x", 
                values_to = "xi")
+
+unique(county.data1$y)
 
 # nest dataframe, each group is one outcome (Y1=has facility, Y0=no fac) and 
 # one demographic x
@@ -102,9 +118,10 @@ func_mean_demo <- function(dat, xi){
 }
 
 # t-test: average perc deprived in counties with criteria TRI vs. none
-func_mean_demo(dat = county.data2$data[[1]], xi = xi)
+# example: 
+# func_mean_demo(dat = county.data2$data[[1]], xi = xi)
 
-# 
+# apply the t-test function over the nested data (county.data2)
 county_res <- county.data2 %>%
   mutate(res = map(data, ~func_mean_demo(dat = .x, xi = xi))) %>%
   select(-data) %>%
@@ -119,6 +136,8 @@ write.csv(county_res, paste0("results/Suppl. Mean demos and TRI facs.csv"))
 ## figure 1
 ## ============================================================================
 
+# prepare data for plotting. calculate standard errors, format p-values, and 
+# define factor and labels that will display in the plot
 county_ready2plot <- county_res %>%
   rename(xi = `xi > 0`) %>%
   mutate(
@@ -144,7 +163,9 @@ county_ready2plot <- county_res %>%
                 levels = c("FALSE", "TRUE"), 
                 labels = c("No", "Yes")))
 
-ggplot(county_ready2plot, 
+# plot
+county_ready2plot %>% view()
+ggplot(county_ready2plot %>% filter(!is.na(y)), 
        aes(x = xi, y = mean, fill = xi)) + 
   geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.25, position = 'dodge') + 
   geom_bar(stat = 'identity', color = 'black', linewidth = 0.3) +
@@ -265,8 +286,8 @@ means <- demo_pws_summary %>%
   select(demo_variable, starts_with("mean")) %>%
   pivot_longer(cols = starts_with("mean"), names_prefix = "mean_", names_to = "x", values_to = "means")
 
-# calculated averages for 7 demographic factors * 4 total outcomes = 28
-## show 4 main demographic factors of interest (perc Hisp, perc Bl, perc deprived, perc_urban)
+## calculated averages for 7 demographic factors * 4 total outcomes = 28
+# show 4 main demographic factors of interest (perc Hisp, perc Bl, perc deprived, perc_urban)
 stopifnot(nrow(means) == 28)
 
 # get standard deviation
@@ -303,6 +324,7 @@ demo_pws_data_ready2plot <- plot.data %>%
            p >= 0.001 ~ paste0("p=", format(round(p, 2), nsmall=2))),
          se = sd/sqrt(n), 
          x_group = if_else(str_detect(x, "det"), "det", "viol")) %>%
+  rename(y = means) %>%
   select(x_group, demo_variable, n, x, y, se, sd, p, p1, p_stars)
 
 # ready labels 
@@ -379,59 +401,86 @@ ggsave(plot = last_plot(),
 # tribes and u.s. territories
 #==============================================================================
 
-# 105 water systems were excluded from the main analysis that were missing MDI, 
-# and other census data, and were serving tribal area or U.S. territories. 
-# to explore possible ej issues, we compared detection and exceedance frequencies
+## brief description
+# Some water systems were excluded from the main analysis that were missing MDI, 
+# and other census data, and were serving tribal areas or U.S. territories. 
+# To explore possible ej issues, we compared detection and exceedance frequencies
 # (proportions of water systems with detects/exceedences) between 2 groups: 
 # systems serving U.S. territories or tribes versus systems serving areas in the
 # main analysis (U.S. states and D.C.). We used Fisher's Exact test due to 
-# low numbers of detects among a relatively lower number of tribal/territorial 
-# systems detecting/exceeding contams
+# low numbers of detects among tribal/territorial PWSs
 
 ## begin here 
+# dat_ucmr3 precedes dat_clean in data cleaning scripts
+# dat_ucmr3 contains data for PWSs **before** restriction
 str(dat_ucmr3)
 
-# number of systems excluded, by "state" (specific U.S. territory/tribal area. 
-# tribal areas are designated with numbers) or "state status" (tribe or territory)
-## total = 108** 
-## **3 systems (all in Puerto Rico) never collected samples for target contams
+## number of systems excluded
+## total = 108
+## 3 systems (all in Puerto Rico) never collected samples for target contams
 dat_tt <- dat_ucmr3 %>% filter(state_status %in% c("tribe", "territory"))
-dat_tt %>% count(det_any)
 dat_tt2 <- dat_tt %>% filter(!is.na(det_any))
-dat_tt2 %>% count(state) # most (69 systems) were in Puerto Rico
-dat_tt2 %>% count(state_status) # 76 territories, 29 tribal PWS
+stopifnot(nrow(setdiff(dat_tt, dat_tt2)) == 3)
 
-## detection freqs of target contaminants among systems in the main analysis
-t1 <- dat_clean %>% 
+## number of systems excluded by "state" (specific U.S. territory/tribal area. 
+# tribal areas are designated with numbers) or "state status" (tribe or territory)
+dat_tt2 %>% count()  # 105 systems overall
+dat_tt2 %>% count(state)  # most (69 systems) were in Puerto Rico
+dat_tt2 %>% count(state_status)  # 76 territories, 29 tribal PWS
+
+# make long data (easier format)
+dat_tt3 <- dat_tt2 %>% 
+  pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
+               names_to = "outcome", values_to = "value")
+
+## contamination-specific frequencies among tribal PWSs (n=29) and territorial 
+## PWSs (n=76). Frequencies were calculated for systems separated by whether 
+## they were in a tribal area or U.S. territory, and combined. 
+det_freq_tt <- dat_tt3 %>% 
+  bind_rows(dat_tt3 %>% mutate(state_status = "overall")) %>%  # for overall category
+  group_by(state_status, outcome) %>% 
+  summarise(n = n(), 
+            detect = sum(value == 1),
+            det_freq = 100*detect/n())
+
+## contamination-specific frequencies among PWSs in the main analysis (n=4808).
+det_freq_main <- dat_clean %>% 
   pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
                            names_to = "outcome", values_to = "value") %>% 
-  group_by(outcome) %>% 
-  summarise(n = sum(!is.na(value)), # NAs mean no sampling done.
-            yes = sum(value == 1, na.rm = T),
-            det_freq = round(100*sum(value == 1, na.rm = T)/n, 1)) %>%
-  mutate(state_status = "State or D.C.")
+  mutate(state_status = "State or D.C.") %>%
+  group_by(state_status, outcome) %>% 
+  summarise(n = sum(!is.na(value)),  # NA = system did not sample for contaminant
+            detect = sum(value == 1, na.rm = T),
+            det_freq = 100*detect/n())
 
+## combine datasets 
+det_freq_maintt <- bind_rows(det_freq_main, det_freq_tt)
+det_freq_maintt %>% pivot_wider(id_cols = c(state_status, n), 
+                                names_from = outcome, values_from = det_freq)
+
+combined <- dat_tt2 %>% bind_rows(dat_clean %>% 
+                        mutate(state_status = "State or D.C."))
+
+long <- combined %>% 
+  pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
+               names_to = "outcome", values_to = "value")
+
+nested <- long %>%
+  group_by(outcome) %>% 
+  nest()
+
+nested$data[[1]] %>% view()
 ## detection freqs of target contaminants among territories/tribal systems
 # tribal OR territory combined
 t2 <- dat_tt2 %>% 
   pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
                names_to = "outcome", values_to = "value") %>% 
   group_by(outcome) %>% 
-  summarise(n = sum(!is.na(value)), # NAs mean no sampling done.
+  summarise(n = sum(!is.na(value)),  # NA = system did not sample for contaminant
             yes = sum(value == 1, na.rm = T),
             det_freq = round(100*sum(value == 1, na.rm = T)/n, 1)) %>%
   mutate(state_status = "Tribal or Territorial PWS")
 
-# tribal OR territory separate
-t3 <- dat_tt2 %>% 
-  pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
-               names_to = "outcome", values_to = "value") %>% 
-  ## adding state_status to stratify by territory or tribe
-  group_by(state_status, outcome) %>% 
-  summarise(n = sum(!is.na(value)), # NAs mean no sampling done.
-            yes = sum(value == 1, na.rm = T),
-            det_freq = round(100*sum(value == 1, na.rm = T)/n, 1))
-t3
 
 # make a dataset that has the main US-based water systems sample, and the 
 # tribal/territorial water systems
@@ -521,222 +570,14 @@ comb_overrepresentn <- overall_UCMR %>%
   relocate(overall_prevalence, .after = state_status)
 comb_overrepresentn
 
-# write.csv(comb_overrepresentn, 
-#           paste0("outputs/", Sys.Date(), " - overrepresentation TT vs US systems.csv"))
 
 comb_overrepresentn %>%
   flextable() %>%
   autofit() %>%
   theme_vanilla()
 
-#### TABLE #####
+## export
 # write.csv(T4, paste0("outputs/", Sys.Date(), " - comparing TT vs US systems.csv"))
 
-# flextable? 
-# T4 %>%
-#   flextable() %>%
-#   autofit() %>% 
-#   set_header_labels(
-#     outcome = "Outcome", 
-#     
-#   )
-
-## END OF SCRIPT.
-
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# ARCHIVE -----------------------------------------------------------
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-# theme(panel.spacing.y = unit(0.5, "lines"),
-#       strip.background = element_blank(),
-#       strip.placement = "outside")
-# # Start plotting here:
-# ggplot(aes(x = interaction(value_out, outcome), 
-#            y = mean, 
-#            fill = interaction(outcome, value_out))) +
-#   #geom_bar(stat = 'identity', position = 'dodge') + 
-#   geom_col(position = position_dodge(0.5)) + 
-#   scale_x_discrete(guide = 'axis_nested') + 
-#   
-#   # Add stars
-#   geom_text(aes(label = p_stars), size = 5, position = position_nudge(y = 5)) +
-#   
-#   # Facet 
-#   facet_wrap(~demovar, strip.position = 'left', scales = 'free') 
-# 
-# # Adjust outcome category names and stars
-# filter(value_out %in% c('0', '1')) %>% 
-#   mutate(stars = ifelse(stars == " ", "n.s.", stars)) %>%
-#   mutate(stars = ifelse(value_out == 0, "", stars)) %>%
-#   mutate(value_out = factor(value_out, levels = c("0", "1"), labels = c("No", "Yes"))) %>%
-#   
-#   # Adjust outcome names
-#   mutate(outcome = factor(outcome, 
-#                           levels = c("det_any", "viol_any"), 
-#                           labels = str_wrap(c("Target contaminant detected",
-#                                               "Health-reference level exceeded"), 25))) %>%
-#   
-#   # Start plotting here:
-#   ggplot(aes(x = interaction(value_out, outcome), 
-#              y = mean, 
-#              fill = interaction(outcome, value_out))) +
-#   #geom_bar(stat = 'identity', position = 'dodge') + 
-#   geom_col(position = position_dodge(0.5)) + 
-#   scale_x_discrete(guide = 'axis_nested') + 
-#   
-#   # Add stars
-#   geom_text(aes(label = stars), size = 5, position = position_nudge(y = 5)) +
-#   
-#   # Facet 
-#   facet_wrap(~name, strip.position = 'left', scales = 'free') + 
-#   
-#   # Themes and other adjustments
-#   scale_fill_manual(name = "", values = c("#9bccc6",'#c2a5cf',  "#50a6a6", '#7b3294')) + 
-#   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) + 
-#   labs(x = "", y = "") + 
-#   theme_bw() + 
-#   theme(text = element_text(size = 12),
-#         aspect.ratio = 3/5,
-#         ggh4x.axis.nestline = element_blank(), 
-#         panel.grid = element_blank(),
-#         legend.position = 'none', 
-#         strip.placement = 'outside', 
-#         strip.background = element_rect(fill = 'white', color = 'white'), 
-#         strip.text.y.left = element_text(size = 10))
-# 
-# 
-# 
-# cn15 %>%
-#   filter(GEO.id2 %in% county_ids_vec) %>%
-#   pivot_longer(cols = starts_with("bin_fac")) %>%
-#   mutate(value = as.factor(value)) %>%
-#   pivot_longer(cols = c(perc_hisp_any, perc_black_nohisp, mdi_rate, perc_urban), 
-#                names_to = "demovar", values_to = "demovalue") %>%
-#   select(name, value, demovar, demovalue) %>%
-#   left_join(source_demo_comparison) %>%
-#   mutate(value = ifelse(value == 0, "Absent", "Present")) %>% 
-#   mutate(demovar = factor(demovar, 
-#                           levels = c("perc_black_nohisp", 
-#                                      "perc_hisp_any", 
-#                                      "mdi_rate", 
-#                                      "perc_urban"), 
-#                           labels = c("% Black", "% Hispanic", 
-#                                      "% deprived", "% urban households"))) %>%
-#   mutate(name = case_when(name == "bin_fac_any" ~ "Any TRI facility", 
-#                           name == "bin_fac_diox" ~ "Dioxin facility", 
-#                           name == "bin_fac_chlor_solv" ~ "Chlorinated solvent facility", 
-#                           name == "bin_fac_cfc" ~ "CFC facility")) %>%
-#   ggplot(aes(x = value, y = demovalue)) +
-#   geom_jitter(alpha = 0.5, color = 'lightgrey') + 
-#   geom_boxplot(aes(color = value)) + 
-#   geom_text(aes(x = 1.6, y = 80, label = p_stars), 
-#             size = 5, hjust = 1, vjust = 1) + 
-#   # geom_violin(aes(color = value)) + 
-#   facet_grid(demovar ~ name, switch = "y") +
-#   scale_color_manual(name = "", values = c("darkgreen", "darkblue")) + 
-#   labs(x = "", y = "") +
-#   theme_bw() + 
-#   theme(legend.position = "none", 
-#         axis.text = element_text(size = 15), 
-#         strip.text = element_text(size = 13))
-
-# select(-stars) %>%
-#   filter(value_out != 2)  %>% 
-#   rename(p.value = value) %>%
-#   pivot_wider(id_cols = name, 
-#               names_from = c(outcome, value_out), 
-#               values_from = c(mean, p.value),
-#               names_sort = TRUE,
-#               names_glue = "{outcome}_{value_out}_{.value}")%>%
-#   view()
-# 
-# colnames(crude_results)
-# crude_results$name %>% unique()
-# temp$model[[1]] %>% view()
-# 
-# , 
-#          perc_estimate = map_chr(model, ~.x$fmt_perc_change[.x$term == "predictor"]), 
-#          p_stars = map_chr(model, ~.x$p_stars[.x$term == "predictor"]), 
-#   ) %>%
-#   select(-data, -model)
-# 
-# 
-# dat_clean %>%
-#   group_by(det_any) %>%
-#   summarise(n = n(), 
-#             det_any_freq = 100*sum(det_any == 1)/n,
-#             exceed_any_freq = 100*sum(viol_any == 1)/n,
-#             pop_served = sum(pop_served, na.rm = T),  # 5 PWSs w/o info on pop served
-#             mean_samp = paste0(round(mean(n_samples), 1), " (", round(sd(n_samples), 1), ")"), 
-#             median_hisp = calc_and_format_quantiles(perc_hisp_any), 
-#             median_no_hisp_black = calc_and_format_quantiles(perc_black_nohisp), 
-#             median_deprived = calc_and_format_quantiles(mdi_rate), 
-#             median_urban_household = calc_and_format_quantiles(perc_urban)
-#             )
-# 
-# dat_clean %>%
-#   pivot_longer(cols = c(starts_with("det_"), starts_with("viol_"))) %>%
-#   group_by(name) %>%
-#   summarise(n_rows = n(), 
-#             n_PWSID = sum(!is.na(value)), 
-#             n_det = sum(value == 1, na.rm = T), 
-#             detfreq = 100*n_det/n_PWSID, 
-#             samps = mean(n_samples))
-# 
-# # 00. LIBRARIES -----------------------------------------------------------
-# library(tidyverse)
-# library(ggplot2)
-# library(forcats)
-# library(lubridate)
-# library(broom)
-# library(gtools)
-# 
-# ana <- dat_ucmr3 %>% filter(!is.na(mdi_rate))
-# excluded_ana <- setdiff(dat_ucmr3, ana)
-# excluded_ana %>% count(state)
-# summary(ana)
-# 
-# add_stars <- 
-# 
-# 
-# ana %>%
-#   group_by(det_any, size) %>% 
-#   summarise(n = n(), 
-#             across(starts_with('det_'), ~sum(. == 1)),
-#             across(starts_with('viol_'), ~sum(. == 1)), 
-#             mdi_rate = median(mdi_rate),
-#             across(starts_with('perc_'), ~median(., na.rm = T)))
-# 
-# ggplot(ana, aes(x = state, fill = pws_type)) + 
-#   geom_histogram(stat = 'count', position = 'dodge')
-# 
-# # Plot medians by demographs
-# ana %>%
-#   pivot_longer(cols = c(det_any, viol_any), 
-#                names_to = 'outcome', 
-#                values_to = 'out') %>%
-#   group_by(outcome, out) %>%
-#   summarise(n = n(), 
-#             mdi_rate = median(mdi_rate),
-#             across(starts_with('perc_'), ~median(., na.rm = T))) %>%
-#   pivot_longer(cols = c(mdi_rate, starts_with('perc_')),
-#                names_to = 'demo',
-#                values_to = 'level') %>%
-#   ggplot(aes(x = outcome, y = level, fill = out)) +
-#   geom_bar(stat = 'identity', position = 'dodge') + 
-#   facet_wrap(~demo)
-# 
-# ana %>% 
-#   pivot_longer(cols = c(starts_with("det_"), starts_with("viol_")), 
-#                names_to = "outcome", 
-#                values_to = "y") %>%
-#   group_by(outcome) %>%
-#   nest() %>%
-#   # Build out the regression model here:
-#   mutate(m1 = map(data, ~glm(y ~ mdi_rate + n_samples + perc_black_only, 
-#                              data = ., family = 'binomial')), 
-#          m1_tidy = map(m1, tidy, exponentiate = T)) %>%
-#   unnest(m1_tidy) %>%
-#   select(-data, -m1) %>% 
-#   mutate(stars = stars.pval(p.value))
-
+# write.csv(comb_overrepresentn, 
+#           paste0("outputs/", Sys.Date(), " - overrepresentation TT vs US systems.csv"))
