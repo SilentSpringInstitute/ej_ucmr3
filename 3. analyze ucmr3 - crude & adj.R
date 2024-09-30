@@ -381,6 +381,9 @@ adj_res_clean_estimates <- adjusted_results %>%
            format.pval(p.value, eps = 0.001, nsmall = 2, digits = 2)
   )
 
+adj_res_clean_estimates %>% 
+  filter(str_detect(term, "wwtp")) %>%
+  view()
 # Order the table, almost ready to export 
 
 adj_res_clean_tidy <- adj_res_clean_estimates %>%
