@@ -62,12 +62,10 @@ ucmr3.2 <- ucmr3.1 %>%
     )
   )
 
-#+ AM 9/15/2023: I think I have to get rid of the 'na.rm = T' args. Some PWSIDs 
-#+ didn't measure certain contaminants at all. For example, 4 PWSs --
-#+ "CT0450011", "NJ0702001", "NY1600008", "NY5903469" -- never sampled for HCFC-22. 
-#+ Note than in the AHz's previous df, there were 8 PWSs that never sampled for HCFC-22.
-#+ Solved with adding an if(any(...)) condition.
-#+ This introdues "NA" into the outcome columns. NAs = system did not collect sample for specific analyte.
+# AM 9/15/2023: Some PWSIDs didn't measure certain contaminants at all.
+# For example, 4 systems ("CT0450011", "NJ0702001", "NY1600008", "NY5903469") 
+# never sampled for HCFC-22. "NA" is introduced if the system never sampled
+# for the contaminant.
 
 ucmr3.3 <- ucmr3.2 %>%
   group_by(PWSID) %>%
