@@ -6,11 +6,125 @@
 ### Depends on: UCMR loading and processing.R (for FIPS only)
 
 library(tidyverse)
-library(dplyr)
-library(janitor)
+# library(dplyr)
+library(janitor) # for clean_names()
 library(readxl)
 
 options(stringsAsFactors = FALSE)
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Functions ----
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+correct_counties <- function(dat){
+  dat %>% 
+    mutate(geography = gsub("aleutians west county, alaska", "aleutians west census area, alaska", geography),
+           geography = gsub("aleutians east county, alaska", "aleutians east borough, alaska", geography),
+           geography = gsub("anchorage county, alaska", "anchorage municipality, alaska", geography),
+           geography = gsub("angoon county, alaska", "hoonah-angoon census area, alaska", geography),
+           geography = gsub("bethel county, alaska", "bethel census area, alaska", geography),
+           geography = gsub("dillingham county, alaska", "dillingham census area, alaska", geography),
+           geography = gsub("nome county, alaska", "nome census area, alaska", geography),
+           geography = gsub("valdez-cordova county, alaska", "valdez-cordova census area, alaska", geography),
+           geography = gsub("yukon-koyukuk county, alaska", "yukon-koyukuk census area, alaska", geography),
+           geography = gsub("southeast fairbanks county, alaska", "southeast fairbanks census area, alaska", geography),
+           geography = gsub("bristol bay county, alaska", "bristol bay borough, alaska", geography),
+           geography = gsub("fairbanks north star county, alaska", "fairbanks north star borough, alaska", geography),
+           geography = gsub("juneau county, alaska", "juneau city and borough, alaska", geography),
+           geography = gsub("kenai-cook inlet county, alaska", "kenai peninsula borough, alaska", geography),
+           geography = gsub("kenai peninsula county, alaska", "kenai peninsula borough, alaska", geography),
+           geography = gsub("ketchikan gateway county, alaska", "ketchikan gateway borough, alaska", geography),
+           geography = gsub("kodiak island county, alaska", "kodiak island borough, alaska", geography),
+           geography = gsub("northwest arctic county, alaska", "northwest arctic borough, alaska", geography),
+           geography = gsub("sitka county, alaska", "sitka city and borough, alaska", geography),
+           geography = gsub("north slope county, alaska", "north slope borough, alaska", geography),
+           geography = gsub("wrangell-petersburg county, alaska", "wrangell city and borough, alaska", geography),
+           geography = gsub("yakutat county, alaska", "yakutat city and borough, alaska", geography),
+           geography = gsub("matanuska-susitna county, alaska", "matanuska-susitna borough, alaska", geography),
+           geography = gsub("denali county, alaska", "denali borough, alaska", geography),
+           
+           geography = gsub("caddo county, louisiana", "caddo parish, louisiana", geography),
+           geography = gsub("calcasieu county, louisiana", "calcasieu parish, louisiana", geography),
+           geography = gsub("east baton rouge county, louisiana", "east baton rouge parish, louisiana", geography),
+           geography = gsub("iberia county, louisiana", "iberia parish, louisiana", geography),
+           geography = gsub("jefferson county, louisiana", "jackson parish, louisiana", geography),
+           geography = gsub("lafayette county, louisiana", "lafayette parish, louisiana", geography),
+           geography = gsub("la salle parish, louisiana", "lasalle parish, louisiana", geography),
+           geography = gsub("ouachita county, louisiana", "ouachita parish, louisiana", geography),
+           geography = gsub("rapides county, louisiana", "rapides parish, louisiana", geography),
+           
+           geography = gsub(" city county, virginia", " city, virginia", geography),
+           geography = gsub("arlington county, NA", "arlington county, virginia", geography), # assuming Arlington DC is Arlington, VA
+           geography = gsub("loudoun county, NA", "loudoun county, virginia", geography),
+           geography = gsub("newport news county, virginia", "newport news city, virginia", geography),
+           geography = gsub("charlottesville county, virginia", "charlottesville city, virginia", geography),
+           geography = gsub("covington county, virginia", "covington city, virginia", geography),
+           geography = gsub("danville county, virginia", "danville city, virginia", geography),
+           geography = gsub("alexandria county, virginia", "alexandria city, virginia", geography),
+           geography = gsub("buena vista county, virginia", "buena vista city, virginia", geography),
+           geography = gsub("emporia county, virginia", "emporia city, virginia", geography),
+           geography = gsub("fredericksburg county, virginia", "fredericksburg city, virginia", geography),
+           geography = gsub("emporia county, virginia", "emporia city, virginia", geography),
+           geography = gsub("hopewell county, virginia", "hopewell city, virginia", geography),
+           geography = gsub("lynchburg county, virginia", "lynchburg city, virginia", geography),
+           geography = gsub("martinsville county, virginia", "martinsville city, virginia", geography),
+           #geography = gsub("portsmouth city county, virginia", "portsmouth city, virginia", geography),
+           geography = gsub("petersburg county, virginia", "petersburg city, virginia", geography),
+           #geography = gsub("richmond city county, virginia", "richmond city, virginia", geography),
+           #geography = gsub("roanoke city county, virginia", "roanoke city, virginia", geography),
+           geography = gsub("suffolk county, virginia", "suffolk city, virginia", geography),
+           #geography = gsub("suffolk city county, virginia", "suffolk city, virginia", geography),
+           geography = gsub("waynesboro county, virginia", "waynesboro city, virginia", geography),
+           # geography = gsub("norfolk city county, virginia", "norfolk city, virginia", geography),
+           geography = gsub("norfolk county, virginia", "norfolk city, virginia", geography),
+           geography = gsub("virginia beach county, virginia", "virginia beach city, virginia", geography),
+           # geography = gsub("virginia beach city county, virginia", "virginia beach city, virginia", geography),
+           geography = gsub("chesapeake county, virginia", "chesapeake city, virginia", geography),
+           #geography = gsub("hampton city county, virginia", "hampton city, virginia", geography),
+           geography = gsub(replacement = "james city county, virginia", pattern = "james city, virginia", geography),
+           
+           geography = gsub("carson city county, nevada", "carson city, nevada", geography),
+           
+           geography = gsub("de kalb county, indiana", "dekalb county, indiana", geography),
+           geography = gsub("la porte county, indiana", "laporte county, indiana", geography),
+           geography = gsub("la porte county, indiana", "laporte county, indiana", geography),
+           
+           geography = gsub("debaca county, new mexico", "de baca county, new mexico", geography),
+           #geography = gsub("otero county county, new mexico", "otero county, new mexico", geography),      
+           geography = gsub(replacement = "doña ana county, new mexico", pattern = "dona ana county, new mexico", geography),
+           
+           geography = gsub("la salle county, illinois", "lasalle county, illinois", geography),
+           
+           geography = gsub("mc ", "mc", geography),
+           geography = gsub("^st ", "st. ", geography),
+           geography = gsub(" county county, ", " county, ", geography),
+           
+           geography = gsub("washington county, district of columbia", "district of columbia, district of columbia", geography),
+           geography = gsub("district of columbia county, NA", "district of columbia, district of columbia", geography),
+           geography = gsub("district of columbia county, district of columbia", "district of columbia, district of columbia", geography),
+           
+           # geography = gsub("cumberland county county, north carolina", "cumberland county, north carolina", geography),
+           geography = gsub("badin county, north carolina", "stanly county, north carolina", geography),
+           geography = gsub("greenvile county, south carolina", "greenville county, south carolina", geography),
+           
+           
+           geography = gsub("hills county, florida", "hillsborough county, florida", geography),
+           geography = gsub("^dade county, florida", "miami-dade county, florida", geography),
+           
+           geography = gsub("hills county, new hampshire", "hillsborough county, new hampshire", geography),
+           geography = gsub("kanahwa county, west virginia", "kanawha county, west virginia", geography),
+           geography = gsub("saint louis county, minnesota", "st. louis county, minnesota", geography),
+           geography = gsub("portable source county, colorado", "pueblo county, colorado", geography),
+           
+           geography = gsub("prince georges county, maryland", "prince george's county, maryland", geography),
+           geography = gsub("baltimore city county, maryland", "baltimore city, maryland", geography),
+           geography = gsub("saint marys county, maryland", "st. mary's county, maryland", geography),
+           geography = gsub("hartford county, maryland", "harford county, maryland", geography),
+           
+           #geography = gsub("do?a ana county, new mexico", "dona ana county, new mexico", geography)
+    )
+  
+}
 
 # KEY - STATES ------------------------------------------------------------
 
@@ -107,7 +221,7 @@ county14all <- left_join(county14eco, county14soc) %>%
          geography = tolower(geography))
 
 cn14 <- county14all
-rm(list = ls(pattern = "^county14"))
+# rm(list = ls(pattern = "^county14"))
 
 # Multiple Deprivation Index (MDI) ----------------------------------------
 
@@ -255,7 +369,7 @@ tri_basic_sub <- tri_basic %>%
     "000075718"))
 
 #delete from global environment to make things run faster
-rm(list = ls(pattern = "^tri_basic1"))
+# rm(list = ls(pattern = "^tri_basic1"))
 
 # read in TRI R and A download data
 # has to read in in order to get fips code
@@ -277,8 +391,8 @@ tri_raw_sub <- tri_raw %>%
                             "000075456", 
                             "000075718"))
 
-#delete from global environment to make things run faster
-rm(list = ls(pattern = "^tri_raw1"))
+# delete from global environment to make things run faster
+# rm(list = ls(pattern = "^tri_raw1"))
 
 tri0 <- tri_raw_sub %>% distinct(COUNTY_NAME, FRS_ID, REPORTING_YEAR, STATE_COUNTY_FIPS_CODE) 
 
@@ -365,116 +479,6 @@ src_epa <- epastewardship <- read_excel("raw/PFAS point source data/Data/EPA 201
 src_wwtp <- WWTPfacilities <- read_csv("raw/PFAS point source data/Data/WWTP facility_details.csv")
 src_mfta <- MFTA <- read_excel("raw/PFAS point source data/Data/all MFTA_county.xlsx")
 src_airprt <- airports <- read_excel("raw/PFAS point source data/Data/Part 139_cert_airports.xlsx")
-
-correct_counties <- function(dat){
-  dat %>% 
-    mutate(geography = gsub("aleutians west county, alaska", "aleutians west census area, alaska", geography),
-           geography = gsub("aleutians east county, alaska", "aleutians east borough, alaska", geography),
-           geography = gsub("anchorage county, alaska", "anchorage municipality, alaska", geography),
-           geography = gsub("angoon county, alaska", "hoonah-angoon census area, alaska", geography),
-           geography = gsub("bethel county, alaska", "bethel census area, alaska", geography),
-           geography = gsub("dillingham county, alaska", "dillingham census area, alaska", geography),
-           geography = gsub("nome county, alaska", "nome census area, alaska", geography),
-           geography = gsub("valdez-cordova county, alaska", "valdez-cordova census area, alaska", geography),
-           geography = gsub("yukon-koyukuk county, alaska", "yukon-koyukuk census area, alaska", geography),
-           geography = gsub("southeast fairbanks county, alaska", "southeast fairbanks census area, alaska", geography),
-           geography = gsub("bristol bay county, alaska", "bristol bay borough, alaska", geography),
-           geography = gsub("fairbanks north star county, alaska", "fairbanks north star borough, alaska", geography),
-           geography = gsub("juneau county, alaska", "juneau city and borough, alaska", geography),
-           geography = gsub("kenai-cook inlet county, alaska", "kenai peninsula borough, alaska", geography),
-           geography = gsub("kenai peninsula county, alaska", "kenai peninsula borough, alaska", geography),
-           geography = gsub("ketchikan gateway county, alaska", "ketchikan gateway borough, alaska", geography),
-           geography = gsub("kodiak island county, alaska", "kodiak island borough, alaska", geography),
-           geography = gsub("northwest arctic county, alaska", "northwest arctic borough, alaska", geography),
-           geography = gsub("sitka county, alaska", "sitka city and borough, alaska", geography),
-           geography = gsub("north slope county, alaska", "north slope borough, alaska", geography),
-           geography = gsub("wrangell-petersburg county, alaska", "wrangell city and borough, alaska", geography),
-           geography = gsub("yakutat county, alaska", "yakutat city and borough, alaska", geography),
-           geography = gsub("matanuska-susitna county, alaska", "matanuska-susitna borough, alaska", geography),
-           geography = gsub("denali county, alaska", "denali borough, alaska", geography),
-           
-           geography = gsub("caddo county, louisiana", "caddo parish, louisiana", geography),
-           geography = gsub("calcasieu county, louisiana", "calcasieu parish, louisiana", geography),
-           geography = gsub("east baton rouge county, louisiana", "east baton rouge parish, louisiana", geography),
-           geography = gsub("iberia county, louisiana", "iberia parish, louisiana", geography),
-           geography = gsub("jefferson county, louisiana", "jackson parish, louisiana", geography),
-           geography = gsub("lafayette county, louisiana", "lafayette parish, louisiana", geography),
-           geography = gsub("la salle parish, louisiana", "lasalle parish, louisiana", geography),
-           geography = gsub("ouachita county, louisiana", "ouachita parish, louisiana", geography),
-           geography = gsub("rapides county, louisiana", "rapides parish, louisiana", geography),
-           
-           geography = gsub(" city county, virginia", " city, virginia", geography),
-           geography = gsub("arlington county, NA", "arlington county, virginia", geography), # assuming Arlington DC is Arlington, VA
-           geography = gsub("loudoun county, NA", "loudoun county, virginia", geography),
-           geography = gsub("newport news county, virginia", "newport news city, virginia", geography),
-           geography = gsub("charlottesville county, virginia", "charlottesville city, virginia", geography),
-           geography = gsub("covington county, virginia", "covington city, virginia", geography),
-           geography = gsub("danville county, virginia", "danville city, virginia", geography),
-           geography = gsub("alexandria county, virginia", "alexandria city, virginia", geography),
-           geography = gsub("buena vista county, virginia", "buena vista city, virginia", geography),
-           geography = gsub("emporia county, virginia", "emporia city, virginia", geography),
-           geography = gsub("fredericksburg county, virginia", "fredericksburg city, virginia", geography),
-           geography = gsub("emporia county, virginia", "emporia city, virginia", geography),
-           geography = gsub("hopewell county, virginia", "hopewell city, virginia", geography),
-           geography = gsub("lynchburg county, virginia", "lynchburg city, virginia", geography),
-           geography = gsub("martinsville county, virginia", "martinsville city, virginia", geography),
-           #geography = gsub("portsmouth city county, virginia", "portsmouth city, virginia", geography),
-           geography = gsub("petersburg county, virginia", "petersburg city, virginia", geography),
-           #geography = gsub("richmond city county, virginia", "richmond city, virginia", geography),
-           #geography = gsub("roanoke city county, virginia", "roanoke city, virginia", geography),
-           geography = gsub("suffolk county, virginia", "suffolk city, virginia", geography),
-           #geography = gsub("suffolk city county, virginia", "suffolk city, virginia", geography),
-           geography = gsub("waynesboro county, virginia", "waynesboro city, virginia", geography),
-           # geography = gsub("norfolk city county, virginia", "norfolk city, virginia", geography),
-           geography = gsub("norfolk county, virginia", "norfolk city, virginia", geography),
-           geography = gsub("virginia beach county, virginia", "virginia beach city, virginia", geography),
-           # geography = gsub("virginia beach city county, virginia", "virginia beach city, virginia", geography),
-           geography = gsub("chesapeake county, virginia", "chesapeake city, virginia", geography),
-           #geography = gsub("hampton city county, virginia", "hampton city, virginia", geography),
-           geography = gsub(replacement = "james city county, virginia", pattern = "james city, virginia", geography),
-           
-           geography = gsub("carson city county, nevada", "carson city, nevada", geography),
-           
-           geography = gsub("de kalb county, indiana", "dekalb county, indiana", geography),
-           geography = gsub("la porte county, indiana", "laporte county, indiana", geography),
-           geography = gsub("la porte county, indiana", "laporte county, indiana", geography),
-           
-           geography = gsub("debaca county, new mexico", "de baca county, new mexico", geography),
-           #geography = gsub("otero county county, new mexico", "otero county, new mexico", geography),      
-           geography = gsub(replacement = "doña ana county, new mexico", pattern = "dona ana county, new mexico", geography),
-           
-           geography = gsub("la salle county, illinois", "lasalle county, illinois", geography),
-           
-           geography = gsub("mc ", "mc", geography),
-           geography = gsub("^st ", "st. ", geography),
-           geography = gsub(" county county, ", " county, ", geography),
-           
-           geography = gsub("washington county, district of columbia", "district of columbia, district of columbia", geography),
-           geography = gsub("district of columbia county, NA", "district of columbia, district of columbia", geography),
-           geography = gsub("district of columbia county, district of columbia", "district of columbia, district of columbia", geography),
-           
-           # geography = gsub("cumberland county county, north carolina", "cumberland county, north carolina", geography),
-           geography = gsub("badin county, north carolina", "stanly county, north carolina", geography),
-           geography = gsub("greenvile county, south carolina", "greenville county, south carolina", geography),
-           
-           
-           geography = gsub("hills county, florida", "hillsborough county, florida", geography),
-           geography = gsub("^dade county, florida", "miami-dade county, florida", geography),
-           
-           geography = gsub("hills county, new hampshire", "hillsborough county, new hampshire", geography),
-           geography = gsub("kanahwa county, west virginia", "kanawha county, west virginia", geography),
-           geography = gsub("saint louis county, minnesota", "st. louis county, minnesota", geography),
-           geography = gsub("portable source county, colorado", "pueblo county, colorado", geography),
-           
-           geography = gsub("prince georges county, maryland", "prince george's county, maryland", geography),
-           geography = gsub("baltimore city county, maryland", "baltimore city, maryland", geography),
-           geography = gsub("saint marys county, maryland", "st. mary's county, maryland", geography),
-           geography = gsub("hartford county, maryland", "harford county, maryland", geography),
-           
-           #geography = gsub("do?a ana county, new mexico", "dona ana county, new mexico", geography)
-    )
-  
-}
 
 
 # EPA Stewardship Facilities ----------------------------------------------
