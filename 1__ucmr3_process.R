@@ -1,70 +1,66 @@
-### AUTHOR: AHz
-### LAST EDIT: 2021-06-20 (AHz)
-### LAST REVIEW: 2021-06-20 (AHz)
-### EDITTED: 2022-12-23 (AM)
-### EDITTED: 2023-03-05 (AM)
-### WRITTEN IN: R version 3.5.1 and 4.2.2
-### Purpose: Load and clean all UCMR data -- create contam.pfas column where all pfas chems are changed to "pfas", 
-### add regions, filter out only states and chemicals we want, add detchem/hlvlchem code, add pfoa and pfos to determine 
-### if they are over 70ppb health level
+# DATE STARTED: 2021-06-20
+# AUTHOR: Amanda Hernandez
+# PURPOSE: Check detection frequencies and create outcome variables from the UCMR3 dataset
+# LATEST REVISION: 2024-10-02 
+# LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 library(tidyverse)
-# library(ggforce)
 
 options(stringsAsFactors = FALSE)
 
 source_file_loc <- dirname(rstudioapi::getActiveDocumentContext()$path)
 setwd(source_file_loc)
 
-#load in UCMR data 
+# load in UCMR data 
 ucmr3 <- read_csv("raw/UCMR3_All.csv") 
-pfas <- ucmr3 %>% filter(str_detect(Contaminant, "PF"))
-
-colnames(ucmr3)
+# str(ucmr3)
+# colnames(ucmr3)
 
 #how many PWSIDs? 
 length(unique(ucmr3$PWSID)) #5401
 length(unique(ucmr3$Contaminant)) #32
-length(unique(ucmr3$State)) #63 (50 states + D.C. + 6 tribes + 6 territories)
-
-ucmr3 %>%
-  mutate(StateClass = case_when(State %in% c(state.abb, "DC") ~ "state",
-                                State %in% c("1", "10", "5", "6", 
-                                              "8", "9", "NN") ~ "tribe", 
-                                State %in% c("AS", "GU", "MP", 
-                                             "PR", "VI") ~ "territory", 
-                                TRUE ~ "oops")) %>%
-  {stopifnot(nrow(filter(., StateClass == "oops"))==0); .}
-
-
-state.abb
-unique(ucmr3$State) %>% sort()
-
-# restrict to systems doing List 1 Contaminant Monitoring (Assessment Monitoring)
-ucmr3.0 <- ucmr3 %>%
-  filter(MonitoringRequirement == "AM")
-setdiff(ucmr3, ucmr3.0)
+length(unique(ucmr3$State)) #63 
 
 # how many systems in each state? 
 ucmr3 %>% 
   group_by(State) %>% 
   distinct(PWSID) %>%
-  summarise(num_systems = n()) %>% 
-  arrange(-num_systems)
+  count() %>%
+  arrange(-n)
 
-# create a "exceed an HRL" column 
+# restrict to systems doing List 1 Contaminant Monitoring (Assessment Monitoring)
+ucmr3.0 <- ucmr3 %>%
+  filter(MonitoringRequirement == "AM")
+
+# "exceed" = binary (1=exceeded a health reference concentration for 1,4-d, 
+#   1,1-DCA, PFOA, or PFOS, 0=did not exceed). 
+# Health reference concentration source file:
+#   https://www.epa.gov/system/files/documents/2024-04/ucmr3-data-summary.pdf
+
 ucmr3.1 <- ucmr3.0 %>%
   filter(Contaminant %in% c("1,4-dioxane", "1,1-dichloroethane", "PFOA", "PFOS"))
 
-# All units are in ug/L. <-- @AM - double check if this statement is true. 
-ucmr3.2 <- ucmr3.1 %>% 
-  group_by(PWSID, PWSName, FacilityID, FacilityName, CollectionDate, SamplePointID, SamplePointName) %>% 
-  mutate(exceed = case_when(Contaminant == "1,4-dioxane" & AnalyticalResultValue >= 0.35 ~ 1, 
-                            Contaminant == "1,1-dichloroethane" & AnalyticalResultValue >= 6.14 ~ 1, 
-                            Contaminant %in% c("PFOA", "PFOS") & 
-                              sum(AnalyticalResultValue[Contaminant %in% c("PFOA", "PFOS")], 
-                                  na.rm = T) >= 0.07 ~ 1, 
-                            TRUE ~ 0))
+ucmr3.2 <- ucmr3.1 %>%
+  group_by(
+    PWSID,
+    PWSName,
+    FacilityID,
+    FacilityName,
+    CollectionDate,
+    SamplePointID,
+    SamplePointName
+  ) %>%
+  mutate(
+    exceed = case_when(
+      Contaminant == "1,4-dioxane" & AnalyticalResultValue >= 0.35 ~ 1,
+      Contaminant == "1,1-dichloroethane" &
+        AnalyticalResultValue >= 6.14 ~ 1,
+      Contaminant %in% c("PFOA", "PFOS") &
+        sum(AnalyticalResultValue[Contaminant %in% c("PFOA", "PFOS")],
+            na.rm = T) >= 0.07 ~ 1,
+      TRUE ~ 0
+    )
+  )
 
 #+ AM 9/15/2023: I think I have to get rid of the 'na.rm = T' args. Some PWSIDs 
 #+ didn't measure certain contaminants at all. For example, 4 PWSs --
@@ -73,36 +69,29 @@ ucmr3.2 <- ucmr3.1 %>%
 #+ Solved with adding an if(any(...)) condition.
 #+ This introdues "NA" into the outcome columns. NAs = system did not collect sample for specific analyte.
 
-ucmr3.3 <- ucmr3.2 %>% 
-  #filter(PWSID == "NJ0702001") %>% #this PWS never collected 1,4-dioxane samples
+ucmr3.3 <- ucmr3.2 %>%
   group_by(PWSID) %>%
-  summarise(viol_any = if(any(str_detect(Contaminant, "1,4-dioxane|1,1,-dichloroethane|PF")))
-                ifelse(sum(exceed[str_detect(Contaminant, "1,4-dioxane|1,1,-dichloroethane|PF")]) > 0, 
-                       1, 0)
-                else NA_real_,
-            viol_diox = if(any(Contaminant == "1,4-dioxane")) 
-                ifelse(sum(exceed[Contaminant == "1,4-dioxane"]) > 0, 1, 0)
-                else NA_real_,
-            viol_dca = if(any(Contaminant == "1,1-dichloroethane"))
-                ifelse(sum(exceed[Contaminant == "1,1-dichloroethane"]) > 0, 1, 0)
-                else NA_real_, 
-            viol_pfas = if(any(str_detect(Contaminant, "PF")))
-                ifelse(sum(exceed[str_detect(Contaminant, "PF")]) > 0, 1, 0)
-                else NA_real_
-    )
-
-# ucmr3.3 %>% filter(apply(is.na(.), 1, any))
-  
-# ucmr3.3 <- ucmr3.2 %>% 
-#   group_by(PWSID)%>%
-#   summarise(viol_any = ifelse(sum(exceed) > 0, 
-#                              1, 0), 
-#             viol_diox = ifelse(sum(exceed[Contaminant == "1,4-dioxane"]) > 0, 
-#                               1, 0), 
-#             viol_dca = ifelse(sum(exceed[Contaminant == "1,1-dichloroethane"]) > 0, 
-#                              1, 0), 
-#             viol_pfas = ifelse(sum(exceed[str_detect(Contaminant, "PF")]) > 0, 
-#                               1, 0))
+  summarise(
+    viol_any = if (any(
+      str_detect(Contaminant, "1,4-dioxane|1,1,-dichloroethane|PF")
+    ))
+      ifelse(sum(exceed[str_detect(Contaminant, "1,4-dioxane|1,1,-dichloroethane|PF")]) > 0,
+             1, 0)
+    else
+      NA_real_,
+    viol_diox = if (any(Contaminant == "1,4-dioxane"))
+      ifelse(sum(exceed[Contaminant == "1,4-dioxane"]) > 0, 1, 0)
+    else
+      NA_real_,
+    viol_dca = if (any(Contaminant == "1,1-dichloroethane"))
+      ifelse(sum(exceed[Contaminant == "1,1-dichloroethane"]) > 0, 1, 0)
+    else
+      NA_real_,
+    viol_pfas = if (any(str_detect(Contaminant, "PF")))
+      ifelse(sum(exceed[str_detect(Contaminant, "PF")]) > 0, 1, 0)
+    else
+      NA_real_
+  )
 
 ucmr3.4 <- ucmr3.0 %>%
   mutate(detect = case_when(
@@ -128,7 +117,6 @@ ucmr3.4 <- ucmr3.0 %>%
               ifelse(sum(detect[str_detect(Contaminant, "PF")]) > 0, 1, 0)
             else NA_real_)
 
-#ucmr3.4 %>% filter(is.na(det_pfas))
 
 ucmr3.5 <- ucmr3.4 %>% left_join(ucmr3.3) 
 
@@ -143,7 +131,6 @@ ucmr3.0 %>%
             det_freq_samp = 100*num_samp_detected/n, 
             exc_freq_samp = 100*num_samp_exceeded/n) %>% 
   arrange(-det_freq_samp) 
-#%>% View()
 
 # detection frequencies by /total PWSs
 ucmr3.0 %>%
