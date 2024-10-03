@@ -6,7 +6,6 @@
 ### Depends on: UCMR loading and processing.R (for FIPS only)
 
 library(tidyverse)
-# library(dplyr)
 library(janitor) # for clean_names()
 library(readxl)
 
@@ -126,60 +125,32 @@ correct_counties <- function(dat){
   
 }
 
-# KEY - STATES ------------------------------------------------------------
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# States ---- 
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # create a key of state abbreviations and state names
-# used frequently later
 
-key_states <- data.frame(state_abbr = state.abb,
-                         state_name = state.name,
-                         state_name_lower = tolower(state.name)) %>%
+key_states <- data.frame(
+  state_abbr = state.abb,
+  state_name = state.name,
+  state_name_lower = tolower(state.name)) %>%
   bind_rows(data.frame(state_abbr = "DC", 
                        state_name = "District of Columbia",
                        state_name_lower = "district of columbia"))
 
-# SDWIS -------------------------------------------------------------------
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# County demographics ----
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-ucmr3 <- read_csv("raw/UCMR3_All.csv") 
-
-allsdwis <- read_csv("clean/processed_aggregated_sdwis_geoandsys.csv")
-
-#add in DC systems
-allsdwis2 <- read_csv("clean/DC_manual_download_2021-03-05.csv") %>%
-  rename(PWSID = `PWS ID`,
-         PWS_NAME = `PWS Name`) %>% 
-  mutate(PRIMACY_AGENCY_CODE = "DC",
-         PWS_TYPE_CODE = case_when(`PWS Type` == "Community water system" ~ "CWS",
-                                   `PWS Type` == "Non-Transient non-community system" ~ "NTNCS"),
-         WS.POPULATION_SERVED_COUNT = `Population Served Count`,
-         COUNTY_SERVED = "District of Columbia") %>% 
-  select(PWSID, PWS_NAME, PWS_TYPE_CODE, PRIMACY_AGENCY_CODE, WS.POPULATION_SERVED_COUNT, COUNTY_SERVED)
-
-#bind sdwis with DC systems
-allsdwis3 <- bind_rows(allsdwis, allsdwis2)
-
-#get list of PWS in UCMR 
-sdwis_in_ucmr <- allsdwis3 %>% filter(PWSID %in% ucmr3$PWSID)
-unique(sdwis_in_ucmr$PWSID) %>% length() #5280 systems matched
-unique(allsdwis3 %>% filter(!PWSID %in% ucmr3$PWSID)) %>% length() #21 sys did not match
-5401 - (21+5280) # 100 sys in UCMR, but not in SDWIS?
-
-#how many UCMR PWSs have city served information?
-sdwis_in_ucmr %>% 
-  #group_by(PWSID, PWS_NAME) %>%
-  summarize(n_sys_wo_cityserved = length(unique(PWSID[which(is.na(CITY_SERVED))])),
-            n_sys_w_cityserved = length(unique(PWSID[which(!is.na(CITY_SERVED))])),
-            perc_sys_wo_cityserved = 100*n_sys_wo_cityserved/n()) # 43%
-
-
-# County demographics (CN) ------------------------------------------------
+# https://factfinder.census.gov/bkmk/navigation/1.0/en/d_dataset:ACS_14_5YR/d_product_type:DATA_PROFILE/
 
 county14socraw <- read.csv("raw/2014 5yr/ACS_14_5YR_DP02_with_ann.csv")
 county14ecoraw <- read.csv("raw/2014 5yr/ACS_14_5YR_DP03_with_ann.csv")
 county14demraw <- read.csv("raw/2014 5yr/ACS_14_5YR_DP05_with_ann.csv")
 county14tenureraw <- read.csv("raw/2014 5yr/ACS_14_5YR_B25003_with_ann.csv")
 
-#scrape just EJ vars and rename (based on ACS documentation)
+# scrape just EJ vars and rename (based on ACS documentation)
 county14soc <- county14socraw[2:nrow(county14socraw), c("GEO.id", "GEO.id2", "GEO.display.label", "HC03_VC95", "HC03_VC142", "HC03_VC173")] %>%
   rename(geography = GEO.display.label, 
          perc_hs_grad = ,
@@ -222,6 +193,39 @@ county14all <- left_join(county14eco, county14soc) %>%
 
 cn14 <- county14all
 # rm(list = ls(pattern = "^county14"))
+
+# SDWIS -------------------------------------------------------------------
+
+ucmr3 <- read_csv("raw/UCMR3_All.csv") 
+
+allsdwis <- read_csv("clean/processed_aggregated_sdwis_geoandsys.csv")
+
+#add in DC systems
+allsdwis2 <- read_csv("clean/DC_manual_download_2021-03-05.csv") %>%
+  rename(PWSID = `PWS ID`,
+         PWS_NAME = `PWS Name`) %>% 
+  mutate(PRIMACY_AGENCY_CODE = "DC",
+         PWS_TYPE_CODE = case_when(`PWS Type` == "Community water system" ~ "CWS",
+                                   `PWS Type` == "Non-Transient non-community system" ~ "NTNCS"),
+         WS.POPULATION_SERVED_COUNT = `Population Served Count`,
+         COUNTY_SERVED = "District of Columbia") %>% 
+  select(PWSID, PWS_NAME, PWS_TYPE_CODE, PRIMACY_AGENCY_CODE, WS.POPULATION_SERVED_COUNT, COUNTY_SERVED)
+
+#bind sdwis with DC systems
+allsdwis3 <- bind_rows(allsdwis, allsdwis2)
+
+#get list of PWS in UCMR 
+sdwis_in_ucmr <- allsdwis3 %>% filter(PWSID %in% ucmr3$PWSID)
+unique(sdwis_in_ucmr$PWSID) %>% length() #5280 systems matched
+unique(allsdwis3 %>% filter(!PWSID %in% ucmr3$PWSID)) %>% length() #21 sys did not match
+5401 - (21+5280) # 100 sys in UCMR, but not in SDWIS?
+
+#how many UCMR PWSs have city served information?
+sdwis_in_ucmr %>% 
+  #group_by(PWSID, PWS_NAME) %>%
+  summarize(n_sys_wo_cityserved = length(unique(PWSID[which(is.na(CITY_SERVED))])),
+            n_sys_w_cityserved = length(unique(PWSID[which(!is.na(CITY_SERVED))])),
+            perc_sys_wo_cityserved = 100*n_sys_wo_cityserved/n()) # 43%
 
 # Multiple Deprivation Index (MDI) ----------------------------------------
 
