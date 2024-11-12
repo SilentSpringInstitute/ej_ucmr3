@@ -122,7 +122,9 @@ allsdwis3 %>% filter(PWSID %in% sys_in_ucmr3) %>% count(PWS_TYPE_CODE) %>%
 
 allsdwis3 %>% 
   filter(PWSID %in% sys_in_ucmr3) %>%
-  mutate(size = if_else(WS.POPULATION_SERVED_COUNT > 10000, "Large", "Small")) %>%
+  left_join(dat_clean %>%
+              select(PWSID, size)) %>%
+  # mutate(size = if_else(WS.POPULATION_SERVED_COUNT > 10000, "Large", "Small")) %>%
   count(size) %>%
   mutate(sum = sum(n), freq = 100*n/sum)
   
@@ -150,27 +152,34 @@ nrow(df_pws2)  # 150333
 df_pws2
 
 # categorize by size
-df_pws3 <- df_pws2 %>% mutate(size = if_else(population_served_count > 10000, "Large", "Small"))
+df_pws3 <- df_pws2 %>% 
+  left_join(dat_ucmr3 %>% select(c("pws_id"="PWSID"), size))
+
+# filter for PWSIDs in study sample
+df_pws3 <- df_pws3 %>% 
+  filter(pws_id %in% dat_clean$PWSID)
+
+df_pws3 %>% count(size)
 
 ## check with ucmr3 
-dat.check <- dat_clean %>% select(PWSID, size) %>% rename(ucmrsize = size)
-df_pws3.check <- df_pws3 %>% left_join(dat.check, by = c("pws_id"="PWSID"))
-df_pws3.check %>% 
-  filter(pws_id %in% sys_in_ucmr3) %>%
-  mutate(mismatch = case_when(
-    size == "Large" & ucmrsize == "L" ~ "ok", 
-    size == "Small" & ucmrsize == "S" ~ "ok", 
-    TRUE ~ paste0("mismatch, SDWIS: ", size, " UCMR3: ", ucmrsize)
-  )) %>%
-  count(mismatch)
-df_pws3 %>%
-  filter(size == "Large") %>%
-  filter(pws_type %in% c("Community water system", "Non-Transient non-community system"))
+# dat.check <- dat_clean %>% select(PWSID, size) %>% rename(ucmrsize = size)
+# df_pws3.check <- df_pws3 %>% left_join(dat.check, by = c("pws_id"="PWSID"))
+# df_pws3.check %>% 
+#   filter(pws_id %in% sys_in_ucmr3) %>%
+#   mutate(mismatch = case_when(
+#     size == "Large" & ucmrsize == "L" ~ "ok", 
+#     size == "Small" & ucmrsize == "S" ~ "ok", 
+#     TRUE ~ paste0("mismatch, SDWIS: ", size, " UCMR3: ", ucmrsize)
+#   )) %>%
+#   count(mismatch)
+# df_pws3 %>%
+#   filter(size == "Large") %>%
+#   filter(pws_type %in% c("Community water system", "Non-Transient non-community system"))
 
-nrow(df_pws3)
-df_ucmr3_oretype %>% mutate(sum = sum(n), freq = 100*n/sum, freq = round(freq,0))
-df_all_oretype %>% mutate(sum = sum(n), freq = 100*n/sum, freq = round(freq,0))
-df_pws3 %>% count(size)
+# nrow(df_pws3)
+# df_ucmr3_oretype %>% mutate(sum = sum(n), freq = 100*n/sum, freq = round(freq,0))
+# df_all_oretype %>% mutate(sum = sum(n), freq = 100*n/sum, freq = round(freq,0))
+# df_pws3 %>% count(size)
 
 df_all_oretype <- df_pws3 %>% count(pws_type)
 df_all_pws <- df_pws3 %>% group_by(size) %>% count(pws_type)
