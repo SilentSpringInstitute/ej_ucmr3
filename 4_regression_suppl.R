@@ -1,3 +1,10 @@
+# DATE STARTED: 2023-09-17
+# AUTHOR: Aaron Maruzzo
+# PURPOSE: Conduct regressions included in the supplement (except fully adjusted models)
+# LATEST REVISION: 2024-11-12 
+# LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
+
+
 ## Supplemental tables and figures
 
 # Run script "2. create main datasets.R" if starting from here.

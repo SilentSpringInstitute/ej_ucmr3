@@ -1,3 +1,9 @@
+# DATE STARTED: 2021-07-06
+# AUTHOR: Amanda Hernandez, Jahred Liddie
+# PURPOSE: Conduct crude and adjusted regressions (Table 3 in paper)
+# LATEST REVISION: 2024-11-12 
+# LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
+
 library(gtools) # for stars.pval
 library(lme4) # for glmer() (mixed effects model)
 

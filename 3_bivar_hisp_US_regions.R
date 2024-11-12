@@ -1,3 +1,8 @@
+# DATE STARTED: 2024-01-16
+# AUTHOR: Aaron Maruzzo
+# PURPOSE: Explore distribution of % Hispanic and outcomes by US region
+# LATEST REVISION: 2024-11-12
+# LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 colnames(dat_clean)
 ggplot(dat_clean, aes(x = perc_black_nohisp, y = n_samples)) + 

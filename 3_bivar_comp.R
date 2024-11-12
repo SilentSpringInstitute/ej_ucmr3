@@ -1,11 +1,14 @@
+# DATE STARTED: 2023-03-14
+# AUTHOR: Aaron Maruzzo
+# PURPOSE: Conduct t-tests and Exact tests
+# LATEST REVISION: 2024-11-12
+# LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
+
 library(tidyverse)
 library(flextable)
 library(ggplot2)
 library(broom)
 library(ggh4x)
-
-## If you are running code within this repo, download the relevant data from 
-## script 2.
 
 ## ============================================================================
 ## download the data 

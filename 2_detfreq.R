@@ -1,3 +1,8 @@
+# DATE STARTED: 2021-07-06
+# AUTHOR: Amanda Hernandez, Jahred Liddie
+# PURPOSE: Calculate sample- and system-level detection frequencies
+# LATEST REVISION: 2024-11-12
+# LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 ## get main datasets from script 2. run below if needed:
 ## source("2. create main datasets.R")

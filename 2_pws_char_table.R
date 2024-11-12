@@ -1,6 +1,11 @@
+# DATE STARTED: 2023-03-13
+# AUTHOR: Aaron Maruzzo
+# PURPOSE: Creates table summary of PWS in the study (Table 2 in paper)
+# LATEST REVISION: 2024-11-12
+# LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# TABLE 1. Characteristics of PWSs in study --------------------------
+# Characteristics of PWSs in study --------------------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #+ Headings are: Cat Level (e.g., yes/no, large/small, or for overall NA), Pop served, 

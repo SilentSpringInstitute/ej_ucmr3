@@ -1,9 +1,8 @@
-# 10/4/23
-# AM
-#
-# This code was originally from 3. analyze ucmr3 - crude & adj.R. 
-# Migrated these code lines to make the scripts easier to read and faster to 
-# source.
+# DATE STARTED: 2021-07-06
+# AUTHOR: Amanda Hernandez, Jahred Liddie
+# PURPOSE: Conduct adjusted regression, stratified by system size
+# LATEST REVISION: 2024-11-12 
+# LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 # If starting from the current script, please run:
 # this takes a few minutes to run

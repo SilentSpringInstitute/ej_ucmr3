@@ -1,10 +1,15 @@
+# DATE STARTED: 2021-07-06
+# AUTHOR: Amanda Hernandez, Jahred Liddie
+# PURPOSE: Conduct Spearman's p correlations
+# LATEST REVISION: 2024-11-12 
+# LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
-# library(polycor)
-# library(GGally)
-# library(tidyverse)
 library(corrplot)
 library(RColorBrewer)
 # library(Hmisc)
+# library(polycor)
+# library(GGally)
+# library(tidyverse)
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Correlations -------------------------------------------------------------

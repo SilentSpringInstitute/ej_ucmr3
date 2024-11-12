@@ -1,7 +1,8 @@
-# 6/26/24 
-# AM 
-# Marginal analyses
-
+# DATE STARTED: 2024-06-26
+# AUTHOR: Aaron Maruzzo
+# PURPOSE: Conduct marginal analysis
+# LATEST REVISION: 2024-11-12 
+# LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 # load libraries 
 library(margins)
