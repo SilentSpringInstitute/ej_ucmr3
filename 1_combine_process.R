@@ -1,23 +1,24 @@
-# Create main datasets 
-
-## Dataframe of interest; UCMR3 dataset
-## Dataframe of interest: each row represents one PWSID with all relevant vars
-## Dataframe of interest: each row represents a restricted dataset (no missing FIPS codes)
+# DATE STARTED: 2021-06-20
+# AUTHOR: Amanda Hernandez
+# PURPOSE: Merge county-level data with water systems and aggregate to summarize variables per water system ID
+# LATEST REVISION: 2024-10-02 
+# LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 library(tidyverse)
 
 workingdir <- dirname(rstudioapi::getActiveDocumentContext()$path)
 setwd(workingdir)
-#setwd("..")
 getwd()
 
-# Start here --------------------------------------------------
+# ! Start here
+# Sourcing previous scripts --------------------------------------------------
 
-source("0. ucmr3 processing.R")
-source("1. demo processing.R")
+source("1__ucmr3_process.R")
+source("1__demo_process.R")
 
-# This function classifies whether a state belongs to the a state (or D.C.), 
-# a U.S. territory, or a tribal area. 
+# Function --------------------------------------------------
+
+# Classifies whether a state belongs to the a state (or D.C.), U.S. territory, or a tribal area. 
 
 classify_state <- function(dat, state_col) {
   dat %>%
@@ -29,10 +30,8 @@ classify_state <- function(dat, state_col) {
         TRUE ~ "oops"
       )
     ) %>%
-    {
-      stopifnot(nrow(filter(., state_status == "oops")) == 0)
-      .
-    }
+  
+  stopifnot(nrow(filter(., state_status == "oops")) == 0)
 }
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
