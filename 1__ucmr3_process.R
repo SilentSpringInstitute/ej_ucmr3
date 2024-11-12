@@ -6,31 +6,33 @@
 
 library(tidyverse)
 
-options(stringsAsFactors = FALSE)
-
 source_file_loc <- dirname(rstudioapi::getActiveDocumentContext()$path)
 setwd(source_file_loc)
+getwd()
 
-# load in UCMR data 
+options(stringsAsFactors = FALSE)
+
+# Load data ---------------------------------------------------------------
+
 ucmr3 <- read_csv("raw/UCMR3_All.csv") 
 # str(ucmr3)
 # colnames(ucmr3)
 
-#how many PWSIDs? 
-length(unique(ucmr3$PWSID)) #5401
-length(unique(ucmr3$Contaminant)) #32
+# Initial checks 
+# How many PWSIDs? ## 5401
+length(unique(ucmr3$PWSID)) 
+# How many contaminants? ## 32 
+length(unique(ucmr3$Contaminant)) 
+# How many states, including tribes and territories? # 63
 length(unique(ucmr3$State)) #63 
 
-# how many systems in each state? 
-ucmr3 %>% 
-  group_by(State) %>% 
-  distinct(PWSID) %>%
-  count() %>%
-  arrange(-n)
+# Restriction ---------------------------------------------------------------
 
-# restrict to systems doing List 1 Contaminant Monitoring (Assessment Monitoring)
+# List 1 Contaminant Monitoring (Assessment Monitoring)
 ucmr3.0 <- ucmr3 %>%
   filter(MonitoringRequirement == "AM")
+
+# Exceeding a health-reference concentration --------------------------------
 
 # "exceed" = binary (1=exceeded a health reference concentration for 1,4-d, 
 #   1,1-DCA, PFOA, or PFOS, 0=did not exceed). 
@@ -62,10 +64,11 @@ ucmr3.2 <- ucmr3.1 %>%
     )
   )
 
-# AM 9/15/2023: Some PWSIDs didn't measure certain contaminants at all.
+# Detecting a target contaminant at any concentration -----------------------
+
+# "NA" is introduced if the system never sampled for the contaminant.
 # For example, 4 systems ("CT0450011", "NJ0702001", "NY1600008", "NY5903469") 
-# never sampled for HCFC-22. "NA" is introduced if the system never sampled
-# for the contaminant.
+# never sampled for HCFC-22; coded as "NA". 
 
 ucmr3.3 <- ucmr3.2 %>%
   group_by(PWSID) %>%
@@ -116,9 +119,16 @@ ucmr3.4 <- ucmr3.0 %>%
             else NA_real_)
 
 
+# Combine  ----------------------------------------------------------------
+
 ucmr3.5 <- ucmr3.4 %>% left_join(ucmr3.3) 
 
-# detection frequencies by /number of samples
+# Inspect detection frequencies -------------------------------------------
+
+# Will restrict to chemicals that were detected >1% 
+
+# Denominator: total number of samples
+
 ucmr3.0 %>%
   left_join(ucmr3.2) %>%
   group_by(Contaminant) %>% 
@@ -130,7 +140,8 @@ ucmr3.0 %>%
             exc_freq_samp = 100*num_samp_exceeded/n) %>% 
   arrange(-det_freq_samp) 
 
-# detection frequencies by /total PWSs
+# Denominator: total number of water systems
+
 ucmr3.0 %>%
   left_join(ucmr3.2) %>%
   group_by(Contaminant, PWSID) %>% 
