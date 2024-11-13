@@ -8,17 +8,16 @@
 # Supplemental Table 1. Distribution of systems by system type according to SDWIS
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# Systems are classified by system size (depending on size of service population) and 
+# Systems were classified by system size (depending on size of service population) and 
 # by system type (depending on the nature of service populations). Systems 
-# are classified in SDWIS, not the UCMR, as either being community water 
+# were classified in SDWIS, not the UCMR. System types were either community water 
 # systems (CWS), transient non-community water systems (TNCWS), or 
 # non-transient non-community water systems (NTNCWS).
 # 
-# We searched for the system type categories of 4808 systems based 
-# on active systems listed in SDWIS on 2013 quarter 4: 
+# We searched for system types for 4808 systems based on active systems listed in SDWIS on 2013 quarter 4: 
 # https://sdwis.epa.gov/ords/sfdw_pub/r/sfdw/sdwis_fed_reports_public/200
 # and compared the breakdown of CWS/TNCWS/NTNCWS by size among systems 
-# in the UCMR3. Original files are available upon request. 
+# in the UCMR3 and systems overall. Original files are available upon request. 
 
 # start here: 
 source("1_combine_process.R")
@@ -41,7 +40,7 @@ stopifnot(nrow(sdwis2013_clean)==150332) # total number of water systems
 
 # One system was not found in SDWIS ("MS0130025"). This system was classified
 # as a community water system (CWS) serving 492 people according to the 
-# other SDWIS datafile used in previous scripts. According to SDWIS this 
+# other SDWIS data file used in previous scripts. According to SDWIS this 
 # system was inactive during the time period. Bind a new row manually for 
 # this one system.
 
@@ -62,9 +61,9 @@ sdwis <- sdwis2013_clean %>%
   bind_rows(newrow1)
 
 # Categorize the size of systems. Systems were defined as large if they 
-# were classified as large systems in the UCMR or, if not, serve 
+# were classified as large systems in the UCMR or, if not, served
 # greater than 10,000 customers. Small systems were either classified as 
-# small systems in the UCMR or, if not, serve equal to or less than 
+# small systems in the UCMR or, if not, served equal to or less than 
 # 10,000 customers. 
 
 sdwis1 <- sdwis %>%
@@ -222,145 +221,3 @@ tab4 <- bind_rows(tab1, tab3, tot3)
 # plot <- patchworkGrob(plot)
 # x.label <- grid::textGrob("County linked to a UCMR 3 water system", vjust = -1)
 # gridExtra::grid.arrange(plot, bottom = x.label)
-# 
-# # Filter for systems in the UCMR3 
-# 
-# sys_in_ucmr3 <- dat_clean %>% filter(!is.na(det_pfas)) %>% pull(PWSID)
-# 
-# length(sys_in_ucmr3) #4920
-# 
-# df_sys_ucmr3 <- sdwis2013_clean %>%
-#   filter(pws_id %in% sys_in_ucmr3)
-# 
-# allsdwis3 %>% filter(PWSID %in% sys_in_ucmr3) %>% count(PWS_TYPE_CODE) %>% 
-#   mutate(sum = sum(n), freq = 100*n/sum)
-# 
-# allsdwis3 %>% 
-#   filter(PWSID %in% sys_in_ucmr3) %>%
-#   left_join(dat_clean %>%
-#               select(PWSID, size)) %>%
-#   # mutate(size = if_else(WS.POPULATION_SERVED_COUNT > 10000, "Large", "Small")) %>%
-#   count(size) %>%
-#   mutate(sum = sum(n), freq = 100*n/sum)
-# 
-# # the SDWIS data is missing one system
-# ## this was registered as an "inactive" system in SDWIS, and the downloaded
-# ## data only included active systems
-# nrow(df_sys_ucmr3) != length(sys_in_ucmr3)
-# setdiff(sys_in_ucmr3, df_sys_ucmr3$pws_id)  # MS0130025
-# sdwis2013_clean %>% filter(pws_id == "MS0130025") # empty
-# # it is in the other downloaded data 
-# allsdwis3 %>% filter(PWSID == "MS0130025")
-# newrow <- allsdwis3 %>% filter(PWSID == "MS0130025")
-# # length(colnames(newrow)) == length(colnames(sdwis2013_clean))
-# newrow1 <- newrow %>% select(PWSID, PWS_NAME, PWS_TYPE_CODE, WS.POPULATION_SERVED_COUNT, WS.GW_SW_CODE)
-# # 
-# df_pws <- sdwis2013_clean %>% select(pws_id, pws_name, pws_type, population_served_count, primary_source)
-# colnames(newrow1) <- colnames(df_pws)
-# newrow1 <- newrow1 %>% mutate(pws_type = if_else(pws_type=="CWS","Community water system","999"))
-# newrow1 <- newrow1 %>% mutate(primary_source = if_else(primary_source=="GW", "Ground water", "999"))
-# stopifnot(newrow1$pws_type != "999" | newrow1$primary_source != "999")
-# df_pws <- df_pws %>% mutate(population_served_count = as.double(population_served_count))
-# df_pws2 <- df_pws %>% bind_rows(newrow1)
-# nrow(df_pws2)  # 150333
-# 
-# df_pws2
-# 
-# # categorize by size
-# df_pws3 <- df_pws2 %>% 
-#   left_join(dat_ucmr3 %>% select(c("pws_id"="PWSID"), size))
-# 
-# # filter for PWSIDs in study sample
-# df_pws3 <- df_pws3 %>% 
-#   filter(pws_id %in% dat_clean$PWSID)
-# 
-# df_pws3 %>% count(size)
-# 
-# ## check with ucmr3 
-# # dat.check <- dat_clean %>% select(PWSID, size) %>% rename(ucmrsize = size)
-# # df_pws3.check <- df_pws3 %>% left_join(dat.check, by = c("pws_id"="PWSID"))
-# # df_pws3.check %>% 
-# #   filter(pws_id %in% sys_in_ucmr3) %>%
-# #   mutate(mismatch = case_when(
-# #     size == "Large" & ucmrsize == "L" ~ "ok", 
-# #     size == "Small" & ucmrsize == "S" ~ "ok", 
-# #     TRUE ~ paste0("mismatch, SDWIS: ", size, " UCMR3: ", ucmrsize)
-# #   )) %>%
-# #   count(mismatch)
-# # df_pws3 %>%
-# #   filter(size == "Large") %>%
-# #   filter(pws_type %in% c("Community water system", "Non-Transient non-community system"))
-# 
-# # nrow(df_pws3)
-# # df_ucmr3_oretype %>% mutate(sum = sum(n), freq = 100*n/sum, freq = round(freq,0))
-# # df_all_oretype %>% mutate(sum = sum(n), freq = 100*n/sum, freq = round(freq,0))
-# # df_pws3 %>% count(size)
-# 
-# df_all_oretype <- df_pws3 %>% count(pws_type)
-# df_all_pws <- df_pws3 %>% group_by(size) %>% count(pws_type)
-# df_ucmr3_pws <- df_pws3 %>% filter(pws_id %in% sys_in_ucmr3) %>% group_by(size) %>% count(pws_type)
-# df_ucmr3_oretype <- df_pws3 %>% filter(pws_id %in% sys_in_ucmr3) %>% count(pws_type)
-# 
-# df_all_pws2 <- df_all_pws %>% mutate(total = sum(n), freq = 100*n/total, freq = if_else(freq > 10, round(freq, 0), round(freq, 1)))
-# df_all_pws2 <- df_all_pws2 %>% mutate(n = paste0(prettyNum(n, big.mark=","), " (", freq, ")")) %>% select(-total, -freq)
-# df_all_pws2
-# 
-# df_all_oretype2 <- df_all_oretype %>% mutate(total = sum(n), freq = 100*n/total, freq = if_else(freq > 10, round(freq, 0), round(freq, 1)))
-# df_all_oretype2 <- df_all_oretype2 %>% mutate(n = paste0(prettyNum(n, big.mark=","), " (", freq, ")")) %>% select(-total, -freq)
-# df_all_oretype2
-# 
-# df_ucmr3_oretype2 <- df_ucmr3_oretype %>% mutate(total = sum(n), freq = 100*n/total, freq = if_else(freq > 10, round(freq, 0), round(freq, 1)))
-# df_ucmr3_oretype2 <- df_ucmr3_oretype2 %>% mutate(n = paste0(prettyNum(n, big.mark=","), " (", freq, ")")) %>% select(-total, -freq)
-# df_ucmr3_oretype2
-# 
-# df_ucmr3_pws2 <- df_ucmr3_pws %>% mutate(total = sum(n), freq = 100*n/total, freq = if_else(freq > 10, round(freq, 0), round(freq, 1)))
-# df_ucmr3_pws2 <- df_ucmr3_pws2 %>% mutate(n = paste0(prettyNum(n, big.mark=","), " (", freq, ")")) %>% select(-total, -freq)
-# df_ucmr3_pws2
-# 
-# df_top <- df_all_pws2 %>% left_join(df_ucmr3_pws2, by = c('size', 'pws_type'))
-# df_bottom <- df_all_oretype2 %>% left_join(df_ucmr3_oretype2, by = c('pws_type'))
-# 
-# df_representative <- df_top %>% rbind(df_bottom)
-# 
-# df_total1 <- df_pws %>% mutate(pws_type = "total") %>% count(pws_type)
-# df_total2 <- df_pws3 %>% filter(pws_id %in% sys_in_ucmr3) %>% mutate(pws_type = "total") %>% count(pws_type)
-# df_total3 <- df_total1 %>% left_join(df_total2, by = "pws_type")
-# 
-# df_representative2 <- df_representative %>% bind_rows(df_total3 %>% mutate(n.x = as.character(n.x), 
-#                                                                            n.y = as.character(n.y)))
-# df_representative3 <- df_representative2 %>%
-#   rename(num_sys_sdwis = n.x, num_sys_ucmr3 = n.y) %>%
-#   mutate(size = replace_na(size, ""), 
-#          num_sys_ucmr3 = replace_na(num_sys_ucmr3, "0 (0)"))
-# 
-# df_representative3
-
-# df_pws$primary_source %>% unique()
-# 
-# allsdwis3 %>%
-#   filter(PWSID %in% sys_in_ucmr3) %>%
-#   count(PWS_TYPE_CODE) %>%
-#   mutate(freq = 100*n/sum(n))
-# 
-# sdwis2013_clean %>%
-#   filter(pws_id %in% sys_in_ucmr3) %>%
-#   mutate(size = if_else(population_served_count >= 10000, "L", "S")) %>%
-#   count(pws_type)
-# 
-# allsdwis3 %>% filter(PWS_ACTIVITY_CODE == "A")
-# 
-# unique(sdwis2013_clean$activity_status)
-# 
-# sdwis2013_clean %>% 
-#   mutate()
-# 
-# # filter(PWSID %in% dat_clean$PWSID) %>%
-#   mutate(size = if_else(WS.POPULATION_SERVED_COUNT >= 10000, "L", "S")) %>%
-#   count(size, PWS_TYPE_CODE)
-# 
-# summary(dat_clean$perc_urban)
-# hist(dat_clean$perc_urban)
-# 
-# dat_clean %>%
-#   mutate(is_zero = if_else(perc_urban == 0, 'yes', 'no')) %>%
-#   count(is_zero)

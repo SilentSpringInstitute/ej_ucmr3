@@ -111,7 +111,6 @@ tab
 # # Headings are: Contaminant (1,4-dioxane, 1,1-DCE, HCFC-22, PFAS (overall), and 6 PFAS
 # # individually - PFOA, PFOS, PFHpA, PFHxS, PFNA, PFBS.), Reporting Limit, Sample
 # # detection frequency, PWS detection frequency, and % of systems with any HRL
-
 # 
 # stopifnot(length(unique(PWSID_included)) == nrow(dat_clean))
 # 
