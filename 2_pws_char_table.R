@@ -5,17 +5,41 @@
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# Characteristics of PWSs in study --------------------------
+# TABLE 2. Baseline characteristics of public water systems -------------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#+ Headings are: Cat Level (e.g., yes/no, large/small, or for overall NA), Pop served, 
-#+ % of PWSs with >=1 det and >=1 viol, mean number of samples and sd, 
-#+ median and quartile proportions of Hispanic, non-His Black, deprived, and urban
-#+ households
+# Categories (first column): 
+#   * Overall (total pool of 4808 US PWSs, excluding tribal/territory systems)
+#   * Systems that detected a target contaminant 
+#   * Systems that did not detect a target contaminant 
+#   * Systems that exceeded a health-reference conc for PFOA, PFOS, 1,4-dioxane, or 1,1-DCA
+#   * Systems that did not exceed a health-reference conc for PFOA, PFOS, 1,4-dioxane, or 1,1-DCA
+#   * Large systems 
+#   * Small systems 
+#   * Groundwater (GW) systems 
+#   * Surface water (SW) systems 
+#   * Systems that use GW under the influence of SW or a combination of GW/SW sources (MIX) 
+# 
+# Headings (8 columns) are: 
+#   * Total population served (from SDWIS)
+#   * Percent of systems with any target contaminant detects
+#   * Percent of systems with any exceedance of a health-based reference conc for 
+#       PFOA, PFOS, 1,4-dioxane, or 1,1-DCA.
+#   * Mean (and std. deviation) number of samples collected during the UCMR 3 
+#   * Median (and Q1-Q3) percent Hispanic among counties served 
+#   * Median (and Q1-Q3) percent non-Hispanic Blank among counties served
+#   * Median (and Q1-Q3) percent deprived among counties served 
+#   * Median (and Q1-Q3) percent urban among counties served
 
-colnames(dat_clean)
+# start here: 
+source("1_combine_process.R")
 
-dat_clean %>% filter(is.na(pop_served))
+stopifnot(nrow(dat_clean)==4808) # total number of systems in the study
+
+# str(dat_clean)
+# colnames(dat_clean)
+
+# Function ----------------------------------------------------------------
 
 calc_and_format_quantiles <- function(col){
   paste0(format(round(median(col),1), nsmall = 1), " (",
@@ -23,28 +47,39 @@ calc_and_format_quantiles <- function(col){
          format(round(quantile(col, 0.75), 1), nsmall = 1), ")")
 }
 
+# Overall summary ---------------------------------------------------------
+
+# Note: In the line that adds up the total number of population served, 
+# na.rm=T is necessary since 5 systems do not have population served counts from 
+# SDWIS and was coded as "NA".
 
 ore <- dat_clean %>%
   summarise(n = n(), 
             det_any_freq = 100*sum(det_any == 1)/n,
             exceed_any_freq = 100*sum(viol_any == 1)/n,
             pop_served = sum(pop_served, na.rm = T)/1e6, # in millions  
-            # na.rm = T required ^ since 5 PWSs w/o info on pop served
             mean_samp = paste0(round(mean(n_samples), 1), " (", round(sd(n_samples), 1), ")"), 
             median_hisp = calc_and_format_quantiles(perc_hisp_any), 
             median_no_hisp_black = calc_and_format_quantiles(perc_black_nohisp), 
             median_deprived = calc_and_format_quantiles(mdi_rate), 
             median_urban_household = calc_and_format_quantiles(perc_urban))
-ore
 
-table1 <- list()
+# checks 
+# median(dat_clean$perc_hisp_any); IQR(dat_clean$perc_hisp_any)
+# median(dat_clean$perc_black_nohisp); IQR(dat_clean$perc_black_nohisp)
+# median(dat_clean$mdi_rate); IQR(dat_clean$mdi_rate)
+# median(dat_clean$perc_urban); IQR(dat_clean$perc_urban)
+
+# The chunk below groups by one of the variables in the vector my_vars, then calculates each of the 
+# headings (total population served, median demographics, etc.). Returns a list.
+
+tab <- list()
 
 my_vars <- c("det_any", "viol_any", "size", "pws_type")
 
 for (var in my_vars) {
   
-  # Group by one of the variables and summarise
-  temp_result <- dat_clean %>% 
+  temp <- dat_clean %>% 
     group_by_at(var) %>%
     summarise(n = n(), 
               det_any_freq = 100*sum(det_any == 1)/n,
@@ -58,21 +93,26 @@ for (var in my_vars) {
     )
   
   # Store result 
-  table1[[var]] <- temp_result
+  tab[[var]] <- temp
 }
 
-table1
+# Bind outputs of the list into a data frame object.
 
-final_table1 <- bind_rows(table1)
-final_table1
+tab1 <- bind_rows(tab)
+tab1
 
-final_table2 <- bind_rows(final_table1, ore %>% mutate(overall = 'overall'))
+# Bind tab1 with the overall summary results.
 
-final_table3 <- final_table2 %>% 
+tab2 <- bind_rows(tab1, ore %>% mutate(overall = 'overall'))
+
+# Make export ready.
+
+tab3 <- tab2 %>% 
   pivot_longer(cols = c(det_any, viol_any, size, pws_type, overall)) %>%
   arrange(factor(name, levels = c('overall', 'det_any', 'viol_any',  'size', 'pws_type'))) %>%
   filter(!is.na(value)) %>%
   relocate(c(name, value), 1:2)
-final_table3 
 
-# write.csv(final_table3, paste0("outputs/Table 1. PWS Characteristics_", Sys.Date(), ".csv"))
+tab3 
+
+# write.csv(tab3, paste0("outputs/Table 1. PWS Characteristics_", Sys.Date(), ".csv"))
