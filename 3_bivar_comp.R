@@ -5,81 +5,114 @@
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 library(tidyverse)
-library(flextable)
 library(ggplot2)
 library(broom)
 library(ggh4x)
 
-## ============================================================================
-## download the data 
-## ============================================================================
-## "dat_clean" is the data of 4,808 UCMR 3 public water systems. Each system 
-## is categorized by system size and source water type. Each system was previously
-## linked to county-level data (perc Hispanic, perc Black, perc urban, perc deprived, 
-## wastewater flow, the presence of any TRI, presence of any 1,4-d TRI, presence
-## of any CFC TRI, presence of any chlorinated solvent TRI, presence of any 
-## major PFAS industry, and presence of an AFFF-certified airport or MFTA. 
-## A system classified as "present" = is linked to >=1 county with >=1 facility 
+# start here: 
+source("1_combine_process.R")
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Overview ----------------------------------------------------------------
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# This script created two figures in the paper. Figure 1 is a bar plot of 
+# the average demographic characteristic of counties, stratified by whether 
+# or not the county was linked to an industrial source of unregulated 
+# contaminants. Figure 2 is a bar plot that compared average 
+# demographics between systems that detected one or more unregulated contaminant
+# versus not, and between systems that exceeded one or more health-reference
+# concentration for PFOA, PFOS, 1-4-dioxane, or 1,1-dichloroethane, versus not.
+# The main demographic characteristics of interest were % Hispanic, % non-Hispanic Black, 
+# % deprived, and % urban. Potential industrial sources included the presence of a facility 
+# that reported emissions of 1,4-dioxane, a facility that reported HCFC-22 or CFC-12
+# emissions, or a facility that reported chlorinated solvent emissions. 
+# Potential sources of PFAS include the presence of a PFAS airport, military 
+# fire-training area (MFTA), or an EPA stewardship site.
 # 
-## "fips_cn15" is data combining all PWS-county combinations identified in SDWIS 
-## with demographic data, like perc Hispanic. 
-## fips_cn15 contains PWSs that are NOT in the UCMR 3
-source("2. create main datasets.R")
+# We used unequal variance t-tests to compare averages between groups. We 
+# reported averages and the results of t-tests in the supplement. Code in this 
+# script produced tables in the supplement.
+#
+# The script above downloads processed data. It sources the script that loads the original 
+# UCMR3 dataset into the working environment (1__ucmr3_process.R) as well as 
+# various county-level demographic datasets (1__demo_process.R). See original 
+# scripts for further info. 
 
-stopifnot(nrow(dat_clean) == 4808)
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Counties served by water systems in the UCMR3 -------------------------------
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-## ============================================================================
-## unequal variance t-test
-## 
-## comparing average levels of demographics between (a) counties that 
-## had (a) >=1 criteria TRI fac vs not; (b) 1,4-dioxane TRI fac; (c) CFC TRI fac; 
-## (d) Chlorinated solvent fac; (e) major PFAS industry or PFAS airport/MFTA
-## ============================================================================
+# Compare average levels of demographics between: 
+#  * counties that had >=1 criteria TRI facility vs not
+#  * counties that had >=1 1,4-dioxane TRI facility vs not 
+#  * counties that had >=1 CFC TRI facility vs not
+#  * counties that had >=1 chlorinated solvent facility vs not
+#  * counties that had >=1 major PFAS industry, AFFF-certified airport, or a MFTA
+# Demographics of interest: 
+#  * Percent Hispanic
+#  * Percent non-Hispanic Black 
+#  * Percent deprived 
+#  * Percent urban
+#  * Percent of people in poverty (for sensitivity check of using % deprived)
+#  * Percent of people who are uninsured (for sensitivity)
+#  * Percent of homeownership (for sensitivity)
 
-# filter for systems that were part of the UCMR 3
-# rename GEO.id2 to county_id
-# calculate percent homeownership as proportion of 
+# Start with data frame object "fips_cn15."
+# This object comes from "1__demo_process.R". See script for further info. 
+# This object is a linked dataset that combined water systems to the counties served. 
+# Each row should be distinct combination of a system and a county. For each pair, the dataset  
+# has columns with the demographics of interest, with the exception of 
+# percent homeownership. It also has columns of binary variables (prefix "bin_") 
+# indicating the presence of potential sources. Because fips_cn15 links ALL systems 
+# downloaded from SDWIS, we first restrict the dataset to include only 
+# systems that are part of the analysis.
+
+head(fips_cn15)
+
+# Rename "GEO.id2" to "county_id."
+
 pwsid_county_link <- fips_cn15 %>% 
   filter(PWSID %in% dat_clean$PWSID) %>% 
   rename(county_id = GEO.id2) %>%
   mutate(perc_hmown = 100*owned.house/all.house14)
 
-pwsid_county_link %>% 
-  select(county_id, perc_hmown, perc_pov_ppl, perc_urban, perc_hisp_any)
+# Check for uniqueness.
 
-# check for duplicate entries of PWS-county combinations
 stopifnot(nrow(pwsid_county_link %>% count(PWSID, county_id) %>% filter(n > 1))==0)
 
-## counties are duplicated in the data since it can match with many systems. 
-## for example, "calhoun county, alabama" has 41 different water systems and 
-## 4 of them were part of the UCMR 3.
-## Use distinct() to capture unique combinations of county id's and the corresponding
-## demographic values, then check for duplicates.
+# Counties were duplicated in the data since it can match with many systems. 
+# For example, Calhoun County, Alabama has 4 different water systems that 
+# sampled for target contaminants in the UCMR3.
+# Use distinct() to capture unique combinations of county IDs, the demographic
+# variables of interest, and the presence of potential sources.
 
-# pwsid_county_link %>% 
-#   count(county_id) %>% 
-#   filter(n > 1)
-# 
-# fips_cn15 %>% filter(GEO.id2 == "01015") %>% view()
-
-county.data <- pwsid_county_link %>% 
-  distinct(county_id, perc_hisp_any, perc_black_nohisp, mdi_rate, perc_urban, 
+county_dat <- pwsid_county_link %>% 
+  distinct(county_id,
+           # demographics 
+           perc_hisp_any, perc_black_nohisp, mdi_rate, perc_urban, 
            perc_pov_ppl, perc_uninsur, perc_hmown,
-         n_fac_any, n_fac_diox, n_fac_cfc, n_fac_chlor_solv, 
-         n_MFTA, n_airports, src_epa_present) 
-county.data
+           # potential sources
+           n_fac_any, n_fac_diox, n_fac_cfc, n_fac_chlor_solv, 
+           n_MFTA, n_airports, src_epa_present) 
+county_dat
 
-# check for duplicates - each row is one unique county
-stopifnot(nrow(county.data) == length(unique(county.data$county_id)))
+# Check for duplicates. Each row is one unique county. 
+stopifnot(nrow(county_dat) == length(unique(county_dat$county_id)))
 
-# no missing data 
-stopifnot(county.data %>% filter(if_any(everything(), is.na)) %>% nrow() == 0)
+# Check for missing data. 
+stopifnot(county_dat %>% filter(if_any(everything(), is.na)) %>% nrow() == 0)
 
-# how many counties were matched to a UCMR 3 PWS overall?
-## 1718 counties 
-nrow(county.data)
+# How many counties were matched to a UCMR 3 PWS overall? 1718 counties. 
+nrow(county_dat)
 
-county.data1 <- county.data %>%
+# Create a new single column variable indicating whether either an MFTA facility, 
+# AFFF-certified airport, or an EPA stewardship facility was present in the 
+# county. Pivot everything long to make processing easier. 
+# y = name of demographic variable of interest (eg percent deprived, perc Hisp, etc.)
+# x = name of point source of interest (eg presence of any TRI facility)
+
+county_dat1 <- county_dat %>%
   pivot_longer(cols = c(mdi_rate, starts_with("perc_")), 
                names_to = "y", 
                values_to = "yi") %>%
@@ -91,15 +124,21 @@ county.data1 <- county.data %>%
                names_to = "x", 
                values_to = "xi")
 
-unique(county.data1$y)
+# Nest data frame by the names of the long data. Two columns represent 
+# the names of the demographic variables and point sources of interest, 
+# and a third column is a list of data frames. This makes it easier to apply 
+# a function to the list-column. Each data frame in the list-column is 1718 rows, 
+# representing the counties.
 
-# nest dataframe, each group is one outcome (Y1=has facility, Y0=no fac) and 
-# one demographic x
-county.data2 <- county.data1 %>%
+county_dat2 <- county_dat1 %>%
   group_by(x, y) %>%
   nest()
 
-# function to apply to nested dataframes
+# Define a function to loop over the list-column that calculates the 
+# average demographic level (yi) for each group of xi (dichotomous, 1/0). 
+# The function also conducts the unequal variance t-tests and returns the 
+# p-value from those tests.
+
 func_mean_demo <- function(dat, xi){
   # y is the column of outcomes. y is grouped.
   dat.1 <- dat %>%
@@ -122,26 +161,31 @@ func_mean_demo <- function(dat, xi){
 
 # t-test: average perc deprived in counties with criteria TRI vs. none
 # example: 
-# func_mean_demo(dat = county.data2$data[[1]], xi = xi)
+# func_mean_demo(dat = county_dat2$data[[1]], xi = xi)
 
-# apply the t-test function over the nested data (county.data2)
-county_res <- county.data2 %>%
+# Apply the t-test function over the nested data.
+
+county_results <- county_dat2 %>%
   mutate(res = map(data, ~func_mean_demo(dat = .x, xi = xi))) %>%
   select(-data) %>%
   unnest(res)
-county_res
 
-## save progress
+county_results
 
-write.csv(county_res, paste0("results/Suppl. Mean demos and TRI facs.csv"))
+# Save progress.
 
-## ============================================================================
-## figure 1
-## ============================================================================
+# write.csv(county_res, paste0("results/Suppl. Mean demos and TRI facs.csv"))
 
-# prepare data for plotting. calculate standard errors, format p-values, and 
-# define factor and labels that will display in the plot
-county_ready2plot <- county_res %>%
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Figure 1 ----------------------------------------------------------------
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# Prepare data for plotting. Calculate standard errors, format p-values, and 
+# define factor and labels that will display in the plot. Note: in defining 
+# factor levels of "y", we ignored demographic variables used for sensitivity 
+# analyses (ie, ignored percent poverty, percent homeownership, percent uninsured).
+
+county_ready2plot <- county_results %>%
   rename(xi = `xi > 0`) %>%
   mutate(
     se = sd/sqrt(n),
@@ -166,8 +210,10 @@ county_ready2plot <- county_res %>%
                 levels = c("FALSE", "TRUE"), 
                 labels = c("No", "Yes")))
 
-# plot
-county_ready2plot %>% view()
+# Plot. Use custom functions from ggh4x library to assist in defining scales for 
+# each facet and nesting labels.
+# https://teunbrand.github.io/ggh4x/reference/guide_axis_nested.html
+
 ggplot(county_ready2plot %>% filter(!is.na(y)), 
        aes(x = xi, y = mean, fill = xi)) + 
   geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.25, position = 'dodge') + 
@@ -196,21 +242,33 @@ ggplot(county_ready2plot %>% filter(!is.na(y)),
         strip.text.y.left = element_text(size = 10)
   ) 
 
-## save progress
+# Save progress.
 
-ggsave(plot = last_plot(),
-       filename = paste0("results/Figure 1. Demographics and TRI facility.pdf"),
-       width = 7, height = 6)
+# ggsave(plot = last_plot(),
+#        filename = paste0("results/Figure 1. Demographics and TRI facility.pdf"),
+#        width = 7, height = 6)
 
-## ============================================================================
-## unequal variance t-test
-## 
-## comparing average levels of demographics between (a) water systems that 
-## detected >=1 target contaminant versus 0 contaminants and (b) water systems 
-## that exceeded >=1 EPA health benchmark level for PFAS, 1,4-d, or 1,1-DCA
-## ============================================================================
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Average customers served by water systems ----------------------
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# select relevant columns of interest and pivot to a long dataframe
+# Compare average levels of demographics between: 
+#  * systems that detected >=1 target contaminant vs none
+#  * systems that exceeded >=1 health-reference concentration vs none
+# Target contaminant referred to 1,4-dioxane, HCFC-22, 1,1-dichlorethane, or any PFAS in the UCMR3. 
+# Health benchmarks referred to 2017 EPA values for 1,4-dioxane, 1,1-dichloroethane, PFOA, and PFOS.
+# Demographics of interest: 
+#  * Percent Hispanic
+#  * Percent non-Hispanic Black 
+#  * Percent deprived 
+#  * Percent urban
+#  * Percent of people in poverty (for sensitivity check of using % deprived)
+#  * Percent of people who are uninsured (for sensitivity)
+#  * Percent of homeownership (for sensitivity)
+
+# Start with data frame object "dat_clean." See 1_combine_process.R. Select 
+# relevant columns of interest for the analysis and pivot longer.
+
 demo_pws_data <- dat_clean %>% 
   select(PWSID, det_any, viol_any, 
          mdi_rate, perc_hmown, perc_pov_ppl, perc_uninsur, 
@@ -219,24 +277,17 @@ demo_pws_data <- dat_clean %>%
                names_to = "demo_variable", 
                values_to = "demo_value") 
 
-# peek at data
-str(demo_pws_data)
+# Check: 4808 systems * 7 demographic variables
+stopifnot(nrow(demo_pws_data)==4808*7)
 
-## test method http://www.sthda.com/english/wiki/wiki.php?id_contents=7600
-# test <- demo_pws_data %>% filter(demo_variable == "perc_hisp_any") 
-# x <- test[test$det_any==1,]$demo_value
-# y <- test[test$det_any==0,]$demo_value
-# out <- t.test(x, y, var.equal = FALSE)
-# str(out)
-# out$estimate 
-# str(out$estimate)
-# out$estimate[1]
+# str(demo_pws_data)
 
-## there are 4 outcomes of interest: detect UC (det1), did not detect (det0), 
-## exceed EPA health benchmark (viol1), did not exceed (viol0). 
-# for each outcome, calculate the number of systems, the average demographic measures in 
-# each level of demo_variable. then, test for differences in average demographic 
-# levels comparing systems with detections and exceedances (2 outcome groups).
+# For each demographic variable name (eg "Percent Hispanic"), calculate the average
+# level among systems overall, among systems that detected any target contaminants (det_any==1), 
+# among systems that had no detections (det_any==0), among systems that 
+# exceeded any health-reference conc (viol_any==1), and among systems that 
+# did not exceed any health-reference conc (viol_any==0). Conduct a t-test
+# to compare average levels between groups and return the p-value.
 
 demo_pws_summary <- demo_pws_data %>%
   group_by(demo_variable) %>%
@@ -258,40 +309,38 @@ demo_pws_summary <- demo_pws_data %>%
     mean_viol1 = mean(demo_value[viol_any == 1]), 
     sd_viol1 = sd(demo_value[viol_any == 1]),
     p_viol = t.test(demo_value[viol_any == 0], demo_value[viol_any == 1], var.equal = FALSE)$p.value)
+
 demo_pws_summary
 
-## check by hand 
+# check by hand 
 # calculate mean demographic values
 # demo_pws_means <- demo_pws_data %>% group_by(det_any, demo_variable) %>% summarise(n = n(), mean = mean(demo_value), sd = sd(demo_value))
 # demo_pws_means
 # 
 # demo_pws_means %>% pivot_wider(id_cols = demo_variable, names_from = c(det_any, n), names_glue = "detany_{det_any}_n{n}", values_from = mean)
 
-# export 
-write.csv(demo_pws_summary, paste0("results/", Sys.Date()," Mean demographic levels by PWS outcomes.csv"))
+# Save progress.
 
-## ============================================================================
-## figure 2
-## ============================================================================
-## useful links: 
-# https://teunbrand.github.io/ggh4x/reference/guide_axis_nested.html
+# write.csv(demo_pws_summary, paste0("results/", Sys.Date()," Mean demographic levels by PWS outcomes.csv"))
 
-## plot description
-# x-axis: systems stratified by 2 groups w 2 outcomes each (detect/not; exceed/not)
-#  show as nested x-axis 
-# y-axis: average % {demographic factor} +/- 1 sd
-# in plot: p-value stars on the right-most bar in each group indicating whether 
-#   the difference in means was significant in t-tests
-# color palette: c("#9bccc6", "#50a6a6", '#c2a5cf', '#7b3294')
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Figure 2 ----------------------------------------------------------------
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# Description.
+# x-axis : systems stratified by 2 groups w 2 outcomes each (detect/not; exceed/not)
+#          show as nested x-axis 
+# y-axis : average % demographic variable (with 1 standard error). Four demographic 
+#          variables (% Hisp, % NH Black, % deprived, % urban).
+# in plot: p-value on the right-most bar of each bar grouping indicating whether 
+#          the difference in means was significant in t-tests.
+# color palette: 
+pal <- c("#9bccc6", "#50a6a6", '#c2a5cf', '#7b3294')
 
 # get means 
 means <- demo_pws_summary %>% 
   select(demo_variable, starts_with("mean")) %>%
   pivot_longer(cols = starts_with("mean"), names_prefix = "mean_", names_to = "x", values_to = "means")
-
-## calculated averages for 7 demographic factors * 4 total outcomes = 28
-# show 4 main demographic factors of interest (perc Hisp, perc Bl, perc deprived, perc_urban)
-stopifnot(nrow(means) == 28)
 
 # get standard deviation
 sd <- demo_pws_summary %>% 
@@ -302,7 +351,6 @@ sd <- demo_pws_summary %>%
 p <- demo_pws_summary %>% 
   select(demo_variable, starts_with("p")) %>% 
   pivot_longer(cols = starts_with("p_"), names_prefix = "p_", names_to = "x", values_to = "p") %>%
-  # to help joining later
   mutate(x = paste0(x, "1"))
 
 # get n's
@@ -310,16 +358,20 @@ n <- demo_pws_summary %>%
   select(demo_variable, starts_with("n_")) %>% 
   pivot_longer(cols = starts_with("n_"), names_prefix = "n_", names_to = "x", values_to = "n")
 
-# combine into a format for plotting
-plot.data <- means %>% 
+# Combine pieces into a format for plotting.
+
+demo_pws_data4plot <- means %>% 
   left_join(sd) %>% 
   left_join(p) %>% 
   left_join(n)
-plot.data
 
-# create stars, calculate std error, and create a grouping x-axis variable 
-# called "x_group"
-demo_pws_data_ready2plot <- plot.data %>% 
+demo_pws_data4plot
+
+# Create stars using gtools package. Calculate standard error. Create a grouping
+# variable (called "x_group") to nest x-axis labels in the plot. This grouping 
+# variable is either the detection outcome or the exceedance outcome.
+
+demo_pws_data_ready2plot <- demo_pws_data4plot %>% 
   mutate(p_stars = gtools::stars.pval(p), 
          p_stars = if_else(str_detect(x, "1") & p_stars == " ", "n.s.", p_stars),
          p1 = case_when(
@@ -330,7 +382,8 @@ demo_pws_data_ready2plot <- plot.data %>%
   rename(y = means) %>%
   select(x_group, demo_variable, n, x, y, se, sd, p, p1, p_stars)
 
-# ready labels 
+# Ready labels.
+
 demo_pws_data_ready2plot <- demo_pws_data_ready2plot %>% 
   filter(demo_variable %in% c("perc_hisp_any", "perc_black_nohisp", 
                               "perc_urban", "mdi_rate")) %>%
@@ -353,7 +406,8 @@ demo_pws_data_ready2plot <- demo_pws_data_ready2plot %>%
                                         "Yes.Health-reference level exceeded")) 
   )
         
-## plot 
+# Plot.
+
 ggplot(demo_pws_data_ready2plot, 
        aes(x = x_interact, 
            y = y, 
@@ -394,193 +448,21 @@ ggplot(demo_pws_data_ready2plot,
         strip.background = element_rect(fill = 'white', color = 'white'), 
         strip.text.y.left = element_text(size = 10))
       
-ggsave(plot = last_plot(),
-       paste0("results/Fig 2. Compare average demographics between water systems.pdf"),
-       scale = 1.3,
-       height = 5,
-       width = 5)
+# ggsave(plot = last_plot(),
+#        paste0("results/Fig 2. Compare average demographics between water systems.pdf"),
+#        scale = 1.3,
+#        height = 5,
+#        width = 5)
 
-#==============================================================================
-# tribes and u.s. territories
-#==============================================================================
+# Archive -----------------------------------------------------------------
 
-## brief description
-# Some water systems were excluded from the main analysis that were missing MDI, 
-# and other census data, and were serving tribal areas or U.S. territories. 
-# To explore possible ej issues, we compared detection and exceedance frequencies
-# (proportions of water systems with detects/exceedences) between 2 groups: 
-# systems serving U.S. territories or tribes versus systems serving areas in the
-# main analysis (U.S. states and D.C.). We used Fisher's Exact test due to 
-# low numbers of detects among tribal/territorial PWSs
-
-## begin here 
-# dat_ucmr3 precedes dat_clean in data cleaning scripts
-# dat_ucmr3 contains data for PWSs **before** restriction
-str(dat_ucmr3)
-
-## number of systems excluded
-## total = 108
-## 3 systems (all in Puerto Rico) never collected samples for target contams
-dat_tt <- dat_ucmr3 %>% filter(state_status %in% c("tribe", "territory"))
-dat_tt2 <- dat_tt %>% filter(!is.na(det_any))
-stopifnot(nrow(setdiff(dat_tt, dat_tt2)) == 3)
-
-## number of systems excluded by "state" (specific U.S. territory/tribal area. 
-# tribal areas are designated with numbers) or "state status" (tribe or territory)
-dat_tt2 %>% count()  # 105 systems overall
-dat_tt2 %>% count(state)  # most (69 systems) were in Puerto Rico
-dat_tt2 %>% count(state_status)  # 76 territories, 29 tribal PWS
-
-# make long data (easier format)
-dat_tt3 <- dat_tt2 %>% 
-  pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
-               names_to = "outcome", values_to = "value")
-
-## contamination-specific frequencies among tribal PWSs (n=29) and territorial 
-## PWSs (n=76). Frequencies were calculated for systems separated by whether 
-## they were in a tribal area or U.S. territory, and combined. 
-det_freq_tt <- dat_tt3 %>% 
-  bind_rows(dat_tt3 %>% mutate(state_status = "overall")) %>%  # for overall category
-  group_by(state_status, outcome) %>% 
-  summarise(n = n(), 
-            detect = sum(value == 1),
-            det_freq = 100*detect/n())
-
-## contamination-specific frequencies among PWSs in the main analysis (n=4808).
-det_freq_main <- dat_clean %>% 
-  pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
-                           names_to = "outcome", values_to = "value") %>% 
-  mutate(state_status = "State or D.C.") %>%
-  group_by(state_status, outcome) %>% 
-  summarise(n = sum(!is.na(value)),  # NA = system did not sample for contaminant
-            detect = sum(value == 1, na.rm = T),
-            det_freq = 100*detect/n())
-
-## combine datasets 
-det_freq_maintt <- bind_rows(det_freq_main, det_freq_tt)
-det_freq_maintt %>% pivot_wider(id_cols = c(state_status, n), 
-                                names_from = outcome, values_from = det_freq)
-
-combined <- dat_tt2 %>% bind_rows(dat_clean %>% 
-                        mutate(state_status = "State or D.C."))
-
-long <- combined %>% 
-  pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
-               names_to = "outcome", values_to = "value")
-
-nested <- long %>%
-  group_by(outcome) %>% 
-  nest()
-
-nested$data[[1]] %>% view()
-## detection freqs of target contaminants among territories/tribal systems
-# tribal OR territory combined
-t2 <- dat_tt2 %>% 
-  pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
-               names_to = "outcome", values_to = "value") %>% 
-  group_by(outcome) %>% 
-  summarise(n = sum(!is.na(value)),  # NA = system did not sample for contaminant
-            yes = sum(value == 1, na.rm = T),
-            det_freq = round(100*sum(value == 1, na.rm = T)/n, 1)) %>%
-  mutate(state_status = "Tribal or Territorial PWS")
-
-
-# make a dataset that has the main US-based water systems sample, and the 
-# tribal/territorial water systems
-
-dat_tt_withUS <- dat_clean %>% 
-  bind_rows(dat_tt) %>%
-  mutate(state_status_2 = ifelse(state_status %in% c("tribe", "territory"), 
-                               "TT", "US"))
-dat_tt_withUS
-
-nrow(dat_tt_withUS) #4913 (U.S. PWSs + excluded systems)
-dat_clean %>% bind_rows(dat_tt) %>% group_by(state_status) %>% count()
-# 4808 states, 76 territories, 29 tribes
-
-dat_clean %>% bind_rows(dat_tt) %>% group_by(state_status) %>% count() %>%
-  ungroup() %>% mutate(N = sum(n), freq = 100*n/N)
-
-dat_clean %>% bind_rows(dat_tt) %>% 
-  filter(det_any == 1) %>% 
-  group_by(state_status) %>% count() %>%
-  ungroup() %>% mutate(N = sum(n), freq = 100*n/N)
-
-dat_clean %>% bind_rows(dat_tt) %>% 
-  filter(det_diox == 1) %>% 
-  group_by(state_status) %>% count() %>%
-  ungroup() %>% mutate(N = sum(n), freq = 100*n/N)
-
-# conduct Fisher's Exact test for each outcome
-# comparison is frequencies of detections TT (tribal or territory PWS) vs. US (other PWS) 
-temp <- dat_tt_withUS %>%
-  pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
-               names_to = "outcome", values_to = "value") %>% 
-  group_by(outcome) %>% 
-  nest() %>%
-  mutate(contTabl = map(data, ~table(.x$value, .x$state_status_2))) %>%
-  mutate(test = map(contTabl, ~fisher.test(.)), 
-         test = map(test, ~tidy(.))) %>% 
-  unnest(test)
-
-T4 <- bind_rows(t1, t3) %>% 
-  left_join(temp %>% distinct(outcome, p.value)
-            ) %>%
-  mutate(p.value = ifelse(p.value < 0.001, "< 0.001", as.character(signif(p.value, 2)))) %>%
-  relocate(state_status, .after = outcome) %>%
-  arrange(outcome, state_status) %>%
-  mutate(yes = paste0(yes, " (", det_freq, ")"), 
-         state_status = paste0(state_status, " (n = ", n, ")")) %>%
-  select(-det_freq, -n) 
-T4
-
-# Over-representation analysis 
-
-# function 
-make_clean_value <- function(n, freq){paste0(n, " (", freq, ")")}
-
-# occurrence in UCMR3 dataset
-overall_UCMR <- dat_tt_withUS %>% 
-  count(state_status) %>%
-  mutate(total = sum(n), freq = signif(100*n/total, 2)) %>%
-  mutate(overall_prevalence = make_clean_value(n, freq))
-overall_UCMR
-
-# occurrence among PWSs with detections
-prev_among_detected <- dat_tt_withUS %>%
-  select(PWSID, det_dca, det_diox, det_pfas, det_hcfc, state_status, state_status_2) %>%
-  pivot_longer(cols = starts_with("det_"), names_to = "chemical", values_to = "value") %>%
-  filter(value == 1) %>%
-  count(chemical, state_status) %>%
-  complete(chemical, state_status, fill=list(n = 0)) %>%
-  group_by(chemical) %>%
-  mutate(total = sum(n)) %>%
-  ungroup() %>%
-  mutate(freq = signif(100*n/total, 2)) %>%
-  mutate(clean_value = make_clean_value(n, freq)) %>%
-  mutate(chemical = paste0(chemical, " (n=", total, ")"))
-prev_among_detected
-
-# Simplify and pivot wider for table:
-prev_among_detected_2 <- prev_among_detected %>%
-  pivot_wider(id_cols = state_status, names_from = chemical, values_from = clean_value)
-prev_among_detected_2
-
-# combine tables and format
-comb_overrepresentn <- overall_UCMR %>%
-  select(overall_prevalence) %>%
-  bind_cols(prev_among_detected_2) %>%
-  relocate(overall_prevalence, .after = state_status)
-comb_overrepresentn
-
-
-comb_overrepresentn %>%
-  flextable() %>%
-  autofit() %>%
-  theme_vanilla()
-
-## export
-# write.csv(T4, paste0("outputs/", Sys.Date(), " - comparing TT vs US systems.csv"))
-
-# write.csv(comb_overrepresentn, 
-#           paste0("outputs/", Sys.Date(), " - overrepresentation TT vs US systems.csv"))
+# test method from:
+# http://www.sthda.com/english/wiki/wiki.php?id_contents=7600
+# test <- demo_pws_data %>% filter(demo_variable == "perc_hisp_any") 
+# x <- test[test$det_any==1,]$demo_value
+# y <- test[test$det_any==0,]$demo_value
+# out <- t.test(x, y, var.equal = FALSE)
+# str(out)
+# out$estimate 
+# str(out$estimate)
+# out$estimate[1]
