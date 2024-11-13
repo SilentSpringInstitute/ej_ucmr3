@@ -21,7 +21,7 @@ source("1__demo_process.R")
 # Classifies whether a state belongs to the a state (or D.C.), U.S. territory, or a tribal area. 
 
 classify_state <- function(dat, state_col) {
-  dat %>%
+  dat <- dat %>%
     mutate(
       state_status = case_when(
         !!sym(state_col) %in% c(state.abb, "DC") ~ "state", 
@@ -29,9 +29,9 @@ classify_state <- function(dat, state_col) {
         !!sym(state_col) %in% c("AS", "GU", "MP", "PR", "VI") ~ "territory",
         TRUE ~ "oops"
       )
-    ) %>%
-  
-  stopifnot(nrow(filter(., state_status == "oops")) == 0)
+    )
+  stopifnot(nrow(filter(dat, state_status == "oops")) == 0)
+  return(dat)
 }
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
