@@ -6,10 +6,6 @@
 
 library(corrplot)
 library(RColorBrewer)
-# library(Hmisc)
-# library(polycor)
-# library(GGally)
-# library(tidyverse)
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Correlations -------------------------------------------------------------
@@ -46,8 +42,6 @@ dat_short <- dat_clean %>%
   relocate(c(MX, GW, SW), .after = size)
 #select(PWSID, GW, MX, SW)
 
-
-
 # make data for correlation test, also change column names here
 temp <- dat_short %>% select(-PWSID) %>% mutate_all(as.double)
 
@@ -76,6 +70,7 @@ new_rownames <-
     "MFTA present", 
     "Airport present", 
     "Major PFAS industrial facility present")
+
 rownames(corRes) <- new_rownames
 colnames(corRes) <- new_rownames
 corRes
@@ -89,7 +84,7 @@ cols <- brewer.pal(3, "PRGn")
 ######## This is the plot #####
 
 plot.new()
-#pdf(file = paste0("outputs/", Sys.Date(), " - correlelogram.pdf"))
+# pdf(file = paste0("outputs/", Sys.Date(), " - correlelogram.pdf"))
 # jpeg(file = paste0("outputs/", Sys.Date(), " - correlelogram.jpg"), 
 #     width = 500, height = 500, res = 400)
 png(file = paste0("outputs/", Sys.Date(), " - correlelogram.png"), 
@@ -120,13 +115,9 @@ corrplot(corRes,
          )
 
 dev.off()
-dev.off()
 
-## End of script. 
-
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Archive -------------------------------------------------------------
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 # 
 # dat_clean %>% colnames()
 # dat_clean %>% select(ends_with("bin") & contains("fac")) %>% summarise(across(everything(), ~sum(.==1)))
