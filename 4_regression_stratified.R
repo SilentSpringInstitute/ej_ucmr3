@@ -4,91 +4,63 @@
 # LATEST REVISION: 2024-11-12 
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
-# If starting from the current script, please run:
-# this takes a few minutes to run
-# source("3. analyze ucmr3 - crude & adj.R")
+# Start here:
+source("1_combine_process.R")
+
+# for regression:
+library(lme4)             # glmer() 
+# help(lme4)
+
+# for cleaning outputs of regression model runs:
+library(gtools)           # stars.pval()
+library(broom.mixed) 
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# TABLE 5. Stratified by Size, adjusted logistic models ----------------
+# Overview ----------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# Data source: processed UCMR 3 data 
-#   dat_clean 
+# This script produces the results reported in Table 4. We evaluated associations
+# between contaminant detection (any of the target contaminants) and the set of 
+# explanatory variables (county served demographics, PWS characteristics, wastewater, 
+# and any TRI facilities), after stratifying by system size. Overall, small systems face 
+# greater challenges in obtaining and maintaining water quality relative to 
+# large systems. In addition, small systems tend to serve more rural communities. 
+# We tested whether associations were consistent across models after stratification, 
+# or whether differences emerge based on system size.
 # 
-# Stratify by: 
-# Z = size (large or small)
-# 
-# Six outcomes: 
-# Y1 = detected any target chem 
-# Y2 ... Y5 = detection of either 1,4-d; HCFC-22; 1,1-DCA; PFAS (mutually exclusive)
-# Y6 = exceeded a health reference level (guidance value)
-# 
-# Explanatory variables (predictors):
-# X1 = % Hispanic 
-# X2 = % non-Hispanic Black 
-# X3 = % urban 
-# X4 = % deprived (SES) 
-# X5 = source water (GW, MIX, or SW, ref: SW)
-# X6 = Number of samples 
-# X7 = Wastewater effluent flow (million L per km2) 
-# X8 = Any TRI facility (yes or no, ref: no) 
-# X9...X13 = Any relevant pollution source (3 types of TRI facility, MFTA, airport)
+# The script uses a logistic mixed-effect model from the lme4 package. Similar to 
+# the main regression script ("4__regressions_main.R"), this script creates a nested
+# data frame with a list-column and applies a function to obtain odds ratios (95% CIs), 
+# standard errors, and p-values. 
 
-## Prepare a nested dataframe to run over with the regression models.
-# Pivot the OUTCOME variables ONLY, then nest.
-# Nest now includes the outcome of interest ("name") and size ("size").
+# Start ---
 
-nested_data_for_stratreg <- dat_clean %>%
+nested_df4strat <- dat_clean %>%
   mutate(size = factor(size, levels = c("S", "L"))) %>% 
-  pivot_longer(cols = c(starts_with("det_"), starts_with("viol_"))) %>%
-  group_by(name, size) %>%
+  pivot_longer(cols = c(starts_with("det_"), starts_with("viol_")), 
+               names_to = "outcome_name", 
+               values_to = "outcome_value") %>%
+  group_by(outcome_name, size) %>%
   nest() 
 
-# Define a base formula (main equation, which includes sociodemographic variables,
-# system characteristics, and wastewater, but excludes contaminant-specific sources).
-# Adjust the base formula to include contaminant-specific sources, which
-# vary by outcome (e.g., 1,4-dioxane detect = [base formula] + any 1-4d facility).
-# Add a state intercept term at the end of the equation.
-# 
-# Size is not included in the base formula.
+nested_df4strat2 <- nested_df4strat %>%
+  filter(outcome_name == "det_any")
 
-base_formula2 <- paste(
-  "~ perc_hisp_any + perc_black_nohisp + mdi_rate +",
-  "perc_urban + pws_type + n_samples + adj_wwtp_flow",
-  collapse = " "
-)
+nested_df4strat3 <- nested_df4strat2 %>%
+  mutate(my_formula = paste0(
+    "outcome_value ~ ", 
+    "perc_hisp_any + perc_black_nohisp + mdi_rate + perc_urban + ", 
+    "pws_type + n_samples + ", 
+    "adj_wwtp_flow + n_fac_any_bin + ", 
+    "(1|state)" 
+  ))
 
-nested_data2_add_form <- nested_data_for_stratreg %>%
-  mutate(my_formula = paste("value", base_formula2)) %>%
-  mutate(my_formula = case_when(str_detect(name,"any") ~ paste(my_formula, "+ n_fac_any_bin"), 
-                                str_detect(name, "diox") ~ paste(my_formula, "+ n_fac_diox_bin"), 
-                                str_detect(name, "dca") ~ paste(my_formula, "+ n_fac_chlor_solv_bin"), 
-                                str_detect(name, "hcfc") ~ paste(my_formula, "+ n_fac_cfc_bin"), 
-                                str_detect(name, "pfas") ~ paste(my_formula, "+  n_MFTA_airport_bin + src_epa_present_bin"), 
-                                TRUE ~ "9999")) %>%
-  {stopifnot(nrow(filter(., my_formula == "9999"))==0); .;} %>%
-  mutate(my_formula = paste(my_formula, " + (1|state)")) #%>%
-  # mutate(my_formula = if_else(
-  #   name == "det_dca", 
-  #   str_remove(my_formula, "size \\+ "), 
-  #   my_formula
-  # ))
-
-nested_data2_ready <- nested_data2_add_form %>% 
-  filter(name == "det_any") 
-  # filter(name %in% c("det_any", "viol_any", "det_diox", "det_dca", "det_hcfc", "det_pfas"))
-
-# Visual check that the formulas make sense with the outcomes
-nested_data2_ready %>%
-  distinct(name, my_formula)
-
-## Apply the multiple logistic mixed effect function over the nested data. 
-
-# Mixed effects model for adjusted regression 
-# uses lme4 package and glmer() function 
-# Fit a generalized linear mixed-effects model (GLMM).
-# Both fixed effects and random effects are specified via the model formula.
-# uses broom.mixed package and tidy() function to clean outputs
+# Create a function that conducts adjusted logistic mixed-effects models. 
+# Use tidy() to save from the broom.mixed package to clean model results as a 
+# tidy data frame object. Calculate odds ratios and 95% CI.
+# This will be used to loop over a list-column of a nested data frame.
+# As of 6/26/24, we removed percent change formatting. 
+# Note- same function as in "4__regressions_main.R"
 
 run_log2 <- function(dat, formula){
   lme4::glmer(formula = formula,
@@ -97,10 +69,11 @@ run_log2 <- function(dat, formula){
     broom.mixed::tidy(exponentiate = TRUE, conf.level = 0.95, conf.int = TRUE)
 }
 
-# This may take a while to run! (Estimated: 1 min)
+# Apply the function "run_log2()" over the list-column in the nested 
+# data frame. This may take a while to run! (Estimated: 1.5 mins). 
 
-stratified_results <- nested_data2_ready %>%
-  mutate(n = map_dbl(data, ~sum(!is.na(.$value)))) %>%
+stratified_results <- nested_df4strat3 %>%
+  mutate(n = map_dbl(data, ~sum(!is.na(.$outcome_value)))) %>%
   mutate(model_results = 
            map(data,
                ~run_log2(dat = ., 
@@ -108,69 +81,75 @@ stratified_results <- nested_data2_ready %>%
   unnest(model_results) 
 
 # Visual inspection 
-stratified_results %>%
-  select(name, term, n, p.value, estimate, conf.low, conf.high) #%>%
-# view()
+# stratified_results %>%
+#   select(outcome_name, term, n, p.value, estimate, conf.low, conf.high) #%>%
+# # view()
 
-## Clean the outputs of the results, then merge together. Add p-value stars.
+# Clean the output. Remove intercepts. Format odds ratios and the 95% CIs. 
 
-# Order the explantory variables (predictors):
-TableOrder_vec2 <- 
-  c("perc_hisp_any", "perc_black_nohisp", "mdi_rate", "perc_urban", 
-    "size", "sizeL",
-    "pws_type",  "pws_typeGW", "pws_typeMX", 
-    "n_samples", "adj_wwtp_flow", "n_fac_any_bin",
-    "n_fac_diox_bin", "n_fac_chlor_solv_bin", "n_fac_cfc_bin",
-    "src_epa_present_bin", "n_MFTA_airport_bin", 
-    
-    # for adjusted regressions:
-    "n_fac_any_bin1",
-    "n_fac_diox_bin1",
-    "n_fac_chlor_solv_bin1",
-    "n_fac_cfc_bin1",
-    "src_epa_present_bin1",
-    "n_MFTA_airport_bin1",
-    
-    # for supplementary regressions:
-    "perc_hmown", "perc_pov_ppl", "perc_uninsur")
-
-# Clean coefficients and upper and lower bound results 
-# Had challenges rounding the p-values, will do in Excel
-
-# colnames(adjusted_results)
-
-strt_res_clean_estimates <- stratified_results %>% 
+stratified_results2 <- stratified_results %>% 
   filter(!str_detect(term, "Intercept")) %>%
   select(-data) %>%
   mutate(estimate = format(round(estimate, 2), nsmall = 2), 
          conf.low = format(round(conf.low, 2), nsmall = 2),
          conf.high = format(round(conf.high, 2), nsmall = 2), 
          estimate_edit = paste0(estimate, " (", conf.low, ", ", conf.high, ")"), 
-         p_star = stars.pval(p.value), 
+         p_star = gtools::stars.pval(p.value), 
          p_format = 
            format.pval(p.value, eps = 0.001, nsmall = 2, digits = 2)
   )
 
-# Order the table, almost ready to export 
+# Tidy the outputs by ordering the predictors according to how it appeared 
+# in the paper. 
 
-strt_res_tidy <- strt_res_clean_estimates %>%
-  select(name, size, term, n, estimate_edit, p_format, p_star) %>%
+TableOrder3 <-   c("perc_hisp_any", 
+                   "perc_black_nohisp", 
+                   "mdi_rate",
+                   "perc_urban", 
+                   "size",
+                   "sizeL",
+                   "pws_type",
+                   "pws_typeGW",
+                   "pws_typeMX", 
+                   "n_samples", 
+                   "adj_wwtp_flow",
+                   "n_fac_any_bin",
+                   "n_fac_diox_bin",
+                   "n_fac_chlor_solv_bin", 
+                   "n_fac_cfc_bin",
+                   "src_epa_present_bin",
+                   "n_MFTA_airport_bin", 
+                   
+                   # for adjusted regressions:
+                   "n_fac_any_bin1",
+                   "n_fac_diox_bin1",
+                   "n_fac_chlor_solv_bin1",
+                   "n_fac_cfc_bin1",
+                   "src_epa_present_bin1",
+                   "n_MFTA_airport_bin1",
+                   
+                   # for supplementary regressions:
+                   "perc_hmown", "perc_pov_ppl", "perc_uninsur")
+
+stratified_results3 <- stratified_results2 %>%
+  select(outcome_name, size, term, n, estimate_edit, p_format, p_star) %>%
   mutate(term = factor(term, levels = TableOrder_vec2)) %>%
   arrange(term)
 
-strt_res_export <- strt_res_tidy %>%
+stratified_results_export <- stratified_results3 %>%
   pivot_wider(
     id_cols =  term,
-    names_from = c(size, name, n),
+    names_from = c(size, outcome_name, n),
     values_from = c(estimate_edit, p_format, p_star),
-    names_glue = "{size}_{name}_{n}_{.value}", 
+    names_glue = "{size}_{outcome_name}_{n}_{.value}", 
     names_vary = "slowest",
     names_sort = TRUE,
   ) 
 
-# SAVE HERE:
+# Save progress. 
+# 
 # write.csv(
-#   strt_res_export,
+#   stratified_results_export,
 #   paste0(
 #     "results/Table 5. Size Stratified Adjusted Logistic Results_",
 #     Sys.Date(),
@@ -178,8 +157,37 @@ strt_res_export <- strt_res_tidy %>%
 #   )
 # )
 
-
 # Archived ---- 
+
+# base_formula2 <- paste(
+#   "~ perc_hisp_any + perc_black_nohisp + mdi_rate +",
+#   "perc_urban + pws_type + n_samples + adj_wwtp_flow",
+#   collapse = " "
+# )
+# 
+# nested_df4strat2 <- nested_df4strat %>%
+#   mutate(my_formula = paste("value", base_formula2)) %>%
+#   mutate(my_formula = case_when(str_detect(name,"any") ~ paste(my_formula, "+ n_fac_any_bin"), 
+#                                 str_detect(name, "diox") ~ paste(my_formula, "+ n_fac_diox_bin"), 
+#                                 str_detect(name, "dca") ~ paste(my_formula, "+ n_fac_chlor_solv_bin"), 
+#                                 str_detect(name, "hcfc") ~ paste(my_formula, "+ n_fac_cfc_bin"), 
+#                                 str_detect(name, "pfas") ~ paste(my_formula, "+  n_MFTA_airport_bin + src_epa_present_bin"), 
+#                                 TRUE ~ "9999")) %>%
+#   {stopifnot(nrow(filter(., my_formula == "9999"))==0); .;} %>%
+#   mutate(my_formula = paste(my_formula, " + (1|state)")) #%>%
+# # mutate(my_formula = if_else(
+# #   name == "det_dca", 
+# #   str_remove(my_formula, "size \\+ "), 
+# #   my_formula
+# # ))
+# 
+# nested_data2_ready <- nested_df4strat2 %>% 
+#   filter(name == "det_any") 
+# # filter(name %in% c("det_any", "viol_any", "det_diox", "det_dca", "det_hcfc", "det_pfas"))
+# 
+# # Visual check that the formulas make sense with the outcomes
+# nested_data2_ready %>%
+#   distinct(name, my_formula)
 
 # ## function
 # run_log2 <- function(dat, my_formula){
