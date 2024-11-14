@@ -6,11 +6,38 @@
 
 library(tidyverse)
 
-source_file_loc <- dirname(rstudioapi::getActiveDocumentContext()$path)
-setwd(source_file_loc)
-getwd()
-
 options(stringsAsFactors = FALSE)
+
+# If needed, uncomment to set working directory here.
+# workingdir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+# setwd(workingdir)
+# getwd()
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Overview ----------------
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# This script loads in the published data of national US public water systems 
+# that collected samples for Third Unregulated Contaminant Monitoring Rule (UCMR3)
+# in 2013-2015. We used this dataset to determine which systems meet the criteria 
+# for the outcome variables of interest, 
+# in particular: 
+#   * Exceedence of a health-reference level (concentration), where 
+#     the system had at least one sample of PFOA, PFOS, 1,4-dioxane, or 1,1-DCA
+#     above EPA's 2017 health guidance value for these chemicals (70 ppt for PFOA 
+#     and PFOS combined, eg)
+#   * Detection of a target contaminant, which was met if a system had at least 
+#     one sample that contained 1,4-dioxane, HCFC-22, 1,1-dichloroethane, or 
+#     one of the six PFAS tested in the UCMR3. 
+# There are a total of six main outcomes: 
+#  * detection of any target contaminant 
+#  * detection of 1,4-dioxane 
+#  * detection of HCFC-22 
+#  * detection of 1,1-dichlorethane (1,1-DCA)
+#  * detection of one or more of six PFAS compounds in the UCMR3. 
+# Target chemicals were defined as industrial contaminants measured during 
+# List 1 monitoring during the UCMR3 and were detected with at least 1% of 
+# samples to ensure sufficient statistical power. 
 
 # Load data ---------------------------------------------------------------
 
@@ -125,7 +152,7 @@ ucmr3.5 <- ucmr3.4 %>% left_join(ucmr3.3)
 
 # Inspect detection frequencies -------------------------------------------
 
-# Will restrict to chemicals that were detected >1% 
+# Check if target chemicals were detected >1%. 
 
 # Denominator: total number of samples
 
