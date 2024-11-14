@@ -1,27 +1,52 @@
 # DATE STARTED: 2021-07-06
 # AUTHOR: Amanda Hernandez, Jahred Liddie
 # PURPOSE: Conduct Spearman's p correlations
-# LATEST REVISION: 2024-11-12 
+# LATEST REVISION: 2024-11-13
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
+
+# Start here:
+source("1_combine_process.R")
 
 library(corrplot)
 library(RColorBrewer)
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# Correlations -------------------------------------------------------------
+# Overview -------------------------------------------------------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#+ This script produces correlation statistics among covariates used in
-#+ the multiple regression models. The covariates are: % Hispanic, % NH Black, MDI, 
-#+ % homeownership, % uninsured, % poverty, % urban, system size (L or S, one category), 
-#+ source water (GW, SW, or MIX, each separately), number of samples, WWTP flow, 
-#+ presence of source terms (any TRI fac, diox TRI, CFCs TRI, CFC-12 TRI, HCFC-22 TRI, 
-#+ chlorinated solvents TRI, 1,1,-trichloroethane TRI, 1,1-dichloroethane TRI, 
-#+ MFTA present, airport present, EPA stewardship fac present).
-#+ 
-#+ This script makes a correlelogram with Spearman's p statistics.
+# This script calculated correlation coefficients between pairs of variables 
+# used in multiple regression models. The results of this script 
+# were provided in the supplement as a figure (correlelogram). We used 
+# Spearman's rank correlation to determine correlation coefficients and reported
+# coefficients in the figure.
+# 
+# Warning: This script autosaves a plot with appropriate margins to a folder 
+# called "outputs" in the working directory. The plot is not visible in the 
+# console otherwise. 
+#
+# The variables were:
+#  * % Hispanic, 
+#  * % NH Black,
+#  * % deprived 
+#  * % homeownership
+#  * % uninsured
+#  * % poverty 
+#  * % urban 
+#  * System size (large or small) 
+#  * Groundwater source (GW) 
+#  * Surface water source (SW)
+#  * Combination of GW and SW sources (MIX)
+#  * Number of samples 
+#  * Normalized wastewater effluent flow (in million L/km2)
+#  * Presence of >=1 TRI facility reporting emissions of one or more of 1,4-dioxane, 
+#      HCFC-22, CFC-12, 1,1-DCA, or 1,1,1-TCE between 2010-2015
+#  * Presence of >=1 TRI facility reporting emissions of 1,4-d only
+#  * Presence of >=1 TRI facility reporting emissions of HCFC-22 or CFC-12 only
+#  * Presence of >=1 TRI facility reporting emissions of 1,1-DCA or 1,1,1-TCE only
+#  * Presence of >=1 military fire training area (MFTA)
+#  * Presence of >=1 AFFF-certified airport 
+#  * Presence of >=1 EPA Stewardship facility 
 
-colnames(dat_clean)
 primaryCols <- c("perc_hisp_any", "perc_black_nohisp", "mdi_rate",  "perc_urban",
                  
                  "perc_hmown", "perc_uninsur", "perc_pov_ppl", 
@@ -32,25 +57,29 @@ primaryCols <- c("perc_hisp_any", "perc_black_nohisp", "mdi_rate",  "perc_urban"
                  
                  "n_fac_any_bin", "n_fac_diox_bin", "n_fac_cfc_bin", "n_fac_chlor_solv_bin", 
                  "n_MFTA_bin", "n_airports_bin", "src_epa_present_bin")
-primaryCols
+
+# In data frame object "dat_clean", there are three levels of system type:
+# GW, SW, or MIX. Pivot these wider and create binary variables (1s/0s). 
 
 dat_short <- dat_clean %>% 
   select(PWSID, all_of(primaryCols)) %>%
-  # make binary columns of pws_type (3 levels) 
   mutate(value = 1) %>%
   pivot_wider(names_from = pws_type, values_from = value, values_fill = 0) %>%
   relocate(c(MX, GW, SW), .after = size)
-#select(PWSID, GW, MX, SW)
 
-# make data for correlation test, also change column names here
-temp <- dat_short %>% select(-PWSID) %>% mutate_all(as.double)
+# Make data for correlation test by removing the ID column ("PWSID") and 
+# ensuring all variables are of class double.
 
-# conduct Spearman's test 
-corRes <- cor(temp, method = 'spearman')
+dat4corr <- dat_short %>% select(-PWSID) %>% mutate_all(as.double)
+
+# Conduct Spearman's test.
+
+corRes <- cor(dat4corr, method = 'spearman')
 corRes
 
-# fix names for figure
-rownames(corRes)
+# Fix row names to make labels for figure.
+# rownames(corRes)
+
 new_rownames <- 
   c("Percent Hispanic", 
     "Percent Black, non-Hispanic", 
@@ -60,7 +89,9 @@ new_rownames <-
     "Percent uninsured", 
     "Percent poverty", 
     "System size", 
-    "Source water: MX", "Source water: GW", "Source water: SW", 
+    "Source water: MX", 
+    "Source water: GW", 
+    "Source water: SW", 
     "Number of samples", 
     "WWTP total flow per area", 
     "Any TRI facility", 
@@ -73,28 +104,29 @@ new_rownames <-
 
 rownames(corRes) <- new_rownames
 colnames(corRes) <- new_rownames
-corRes
 
-# get p-values for corr statistics
-corPval <- cor.mtest(corRes, conf.level = 0.95)
-corPval
+# Get p-values (not reported). This can be added to the figure if needed.
 
-cols <- brewer.pal(3, "PRGn")
+corPval <- corrplot::cor.mtest(corRes, conf.level = 0.95)
 
-######## This is the plot #####
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Figure S1: Correlelogram ----------------------------------------------------
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+library(corrplot)
+library(RColorBrewer)
+
+# start plot here:
 plot.new()
-# pdf(file = paste0("outputs/", Sys.Date(), " - correlelogram.pdf"))
-# jpeg(file = paste0("outputs/", Sys.Date(), " - correlelogram.jpg"), 
-#     width = 500, height = 500, res = 400)
+
+# save a file in the outputs folder
 png(file = paste0("outputs/", Sys.Date(), " - correlelogram.png"), 
     width = 10, height = 7.5, units='in', res = 300)
 
-# par(mar = c(par("mar")[1], par("mar")[2], 0, 0))
+# set margins
 par(omi=c(0,0,0,0), mgp=c(0,0,0),mar=c(0,0,0,0))
-# par(omi = c(0,0,0,0), mgp = c(0,0,0), mar = c(0,0,0,0), family = "D")
-# par(mfrow=c(1,1),cex=1,cex.lab = 0.75,cex.main=0.2,cex.axis=0.2)
 
+# plot using corrplot (from corrplot package) and COL2 (from RColorBrewer)
 corrplot(corRes,
          type = 'lower',
          col = COL2("PRGn"), # sets color scheme
@@ -110,13 +142,22 @@ corrplot(corRes,
          #p.mat = corPval$p, # adds p-values
          #tl.srt = 45,
          #insig = 'blank',
-         #col = prgn_palette[c(-1, -11)], # sets color scheme
+         #col = prgn_palette[c(-1, -11)], 
          win.asp = 2/3,
          )
 
+# end plot here:
 dev.off()
 
 # Archive -------------------------------------------------------------
+
+# pdf(file = paste0("outputs/", Sys.Date(), " - correlelogram.pdf"))
+# jpeg(file = paste0("outputs/", Sys.Date(), " - correlelogram.jpg"), 
+#     width = 500, height = 500, res = 400)
+
+# par(mar = c(par("mar")[1], par("mar")[2], 0, 0))
+# par(omi = c(0,0,0,0), mgp = c(0,0,0), mar = c(0,0,0,0), family = "D")
+# par(mfrow=c(1,1),cex=1,cex.lab = 0.75,cex.main=0.2,cex.axis=0.2)
 
 # 
 # dat_clean %>% colnames()
