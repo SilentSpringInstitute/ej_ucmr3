@@ -367,7 +367,8 @@ suppl2_reg_results_export <- suppl2_reg_results_tidy %>%
     starts_with("det_pfas")
   )
 
-# SAVE HERE:
+# Save progress.
+
 # write.csv(
 #   suppl2_reg_results_export,
 #   paste0("results/SuppTable. Adj model results diff SES variables.csv_",
