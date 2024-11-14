@@ -493,10 +493,16 @@ src_airprt <- airports <- read_excel("raw/PFAS point source data/Data/Part 139_c
 
 # * EPA Stewardship facilities -------------------------------------------------
 
+# Note that Gloucester County, New Jersey has two stewardship sites and so 
+# are duplicated in the data frame "src_epa1." Use distinct to remove
+# the duplicated entry.
+
 src_epa1 <- src_epa %>% 
   mutate(geography = paste0(tolower(County), " county, ", tolower(State))) %>%
   mutate(src_epa_present = 1) %>% 
   select(geography, src_epa_present)
+
+src_epa2 <- src_epa1 %>% distinct()
 
 # * AFFF-certified airports ----------------------------------------------------
 
@@ -623,7 +629,7 @@ cn14.1 <- cn14 %>%
   left_join(mdi2) %>%
   left_join(cnurban3) %>%
   left_join(src_wwtp4) %>% 
-  left_join(src_epa1) %>% 
+  left_join(src_epa2) %>% 
   left_join(src_airprt2) %>% 
   left_join(src_mfta3) %>%
   left_join(tri4) %>%
