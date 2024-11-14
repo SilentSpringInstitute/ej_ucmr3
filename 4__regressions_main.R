@@ -124,8 +124,8 @@ continuous_nested_df4crude <- dat_clean %>%
     names_to = "pred",
     values_to = "predictor"
   ) %>%
-  select(PWSID, outcome_name, pred, outcome, predictor) %>%
-  group_by(outcome_name, pred) %>%
+  select(PWSID, name, pred, outcome, predictor) %>%
+  group_by(name, pred) %>%
   nest() %>%
   mutate(n = map_dbl(data, ~ sum(!is.na(.$outcome))))
 
@@ -185,8 +185,8 @@ categorical_nested_df4crude <- dat_clean %>%
     names_to = "pred",
     values_to = "predictor"
   ) %>%
-  select(PWSID, outcome_name, pred, outcome, predictor) %>%
-  group_by(outcome_name, pred) %>%
+  select(PWSID, name, pred, outcome, predictor) %>%
+  group_by(name, pred) %>%
   nest() %>%
   mutate(n = map_dbl(data, ~ sum(!is.na(.$outcome))))
 
