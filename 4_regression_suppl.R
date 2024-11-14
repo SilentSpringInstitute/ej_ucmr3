@@ -4,21 +4,34 @@
 # LATEST REVISION: 2024-11-12 
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
+library(tidyverse)
+library(lme4)
+library(broom.mixed)
+library(gtools) 
 
-## Supplemental tables and figures
+# Start here:
+source("1_combine_process.R")
 
-# Run script "2. create main datasets.R" if starting from here.
-# source("2. create main datasets.R")
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Overview ----------------
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# This script produces regression tables included in the supplement. 
+
+#+ MDI is a multidimensional socioeconomic indicator. Unidimensional SES indicators-- 
+#+ i.e., % of people below the poverty level, % of people without insurance, 
+#+ and % of people who are homeowners--are explored here. We are looking at:
+#+ 1) Is the direction AND/OR magnitude between det/viol and SES different between
+#+    unidimensional vs multidimensional SES indicators?
+
+
 
 # Also run script "3. analyze ucmr3 - crude & adj.R" to get adj_results_clean. 
 # source("3. analyze ucmr3 - crude & adj.R")
 adj_res_clean_tidy
 adjusted_results_export
 
-library(tidyverse)
-library(lme4)
-library(broom.mixed)
-library(gtools) # for stars.pval() function
+
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # With and without source terms ----------------------------------------------
@@ -191,12 +204,6 @@ suppl1_res_clean_export <- suppl1_res_clean_export %>% arrange(term, add_source)
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Other socioeconomic indicators ----------------------------------------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#+ MDI is a multidimensional socioeconomic indicator. Unidimensional SES indicators-- 
-#+ i.e., % of people below the poverty level, % of people without insurance, 
-#+ and % of people who are homeowners--are explored here. We are looking at:
-#+ 1) Is the direction AND/OR magnitude between det/viol and SES different between
-#+    unidimensional vs multidimensional SES indicators?
 
 colnames(dat_clean)[grepl("perc", colnames(dat_clean))]
 
@@ -390,13 +397,9 @@ suppl2_reg_results_export <- suppl2_reg_results_tidy %>%
 #   )
 # )
 
-
-
-###############################################################################
-##  ARCHIVE
-###############################################################################
-
-# Archive ----
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#  ARCHIVE ----
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # write.csv(d_list2[[1]],
 #           paste0("outputs/", Sys.Date(), " - reg results pov.csv"))
