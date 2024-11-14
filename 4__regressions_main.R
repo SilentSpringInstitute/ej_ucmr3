@@ -22,8 +22,8 @@ source("1_combine_process.R")
 # This script produced the primary regressions reported in the paper (Table 3). 
 # Crude logistic models were used to evaluate associations between 
 # contaminant detects among US public water systems in the UCMR3 and 
-# county-level demographics, water system characteristics, and 
-# the presence of industrial sources of unregulated contaminants. There were
+# county-level demographics, water system characteristics, wastewater, and 
+# the presence of industrial and commercial sources of unregulated contaminants. There were
 # five primary outcomes of interest: detection of any target unregulated contaminant, 
 # detection of 1,4-dioxane only, detection of 1,1-DCA only, detection of HCFC-22 only, 
 # detection of PFAS only, and exceedance of any health-reference concentration for 
@@ -34,8 +34,8 @@ source("1_combine_process.R")
 # Adjusted models included the same set of demographics and system characteristics 
 # into a single model for each outcome of interest. Pollution source terms, by contrast, 
 # were outcome-dependent. For models of detection of >=1 target contaminant and of 
-# exceeding >=1 health benchmark, we used wastewater flow and the presence of any 
-# TRI facility as point source terms. For models of chemical-specific detections, 
+# exceeding >=1 health benchmark, terms for wastewater flow and the presence of any 
+# TRI facility were included. For models of chemical-specific detections, 
 # we used wastewater flow and a set of terms corresponding to each source (for example, 
 # for 1,4-dioxane, we used TRI facilities that reported 1,4-dioxane emissions, and for 
 # PFAS, we used the set of point sources reported in Hu et al. 2016).
@@ -93,8 +93,8 @@ run_log1 <- function(dat){
 
 # * Continuous predictors ----
 
-# Define continuous predictors. Included SES variables used for sensitivity 
-# checks (ie percent homeownership, percent uninsured, and percent poverty). 
+# Define continuous predictors. Include SES variables to examine sensitivity 
+# of the primary SES variable (ie, this list includes percent homeownership, percent uninsured, and percent poverty). 
 
 continuous_pred <- c(
   "perc_hisp_any", 
@@ -108,7 +108,7 @@ continuous_pred <- c(
   "perc_pov_ppl"
 )
 
-# Prepare a nested data frame to iterate a regression function over it. 
+# Prepare a nested data frame to iterate a regression function the list-column. 
 # Pivot the outcome variables and predictor variables separately, then remove 
 # unnecessary columns and nest. Count the number of systems in each data frame. 
 
@@ -151,10 +151,10 @@ crude_results_cont <- continuous_nested_df4crude %>%
   mutate(model = map(data, run_log1)) %>%
   unnest(model)
 
+# checking for consistency with running the model by hand
 # glm(det_any ~ n_samples, data=dat_clean, family='binomial')
-
-# visual check:
-# crude_results_cont
+# glm(det_any ~ perc_hisp_any, data=dat_clean, family='binomial')
+# glm(det_any ~ adj_wwtp_flow, data=dat_clean, family='binomial')
 
 # * Categorical predictors ----
 
@@ -169,7 +169,7 @@ categorical_predictors <- c("pws_type",
                             "src_epa_present_bin", 
                             "n_MFTA_airport_bin")
 
-# check
+# check that all these predictors are coded as categorical variables
 # dat_clean %>% select(all_of(categorical_predictors)) %>% str()
 
 categorical_nested_df4crude <- dat_clean %>%
@@ -191,7 +191,7 @@ categorical_nested_df4crude <- dat_clean %>%
   mutate(n = map_dbl(data, ~ sum(!is.na(.$outcome))))
 
 # visual check:
-categorical_nested_df4crude
+# categorical_nested_df4crude
 
 # * Run simple logistic model ----------------
 
@@ -200,7 +200,7 @@ categorical_nested_df4crude
 # the outcome was detection of 1,1-DCA. 
 # Message: glm.fit: fitted probabilities numerically 0 or 1 occurred.
 # This suggested complete separation of cases. This is true because only large
-# water systems detected 1,1-DCA.
+# water systems detected 1,1-DCA. Excluded these results in the final table.
 
 crude_results_cat <- categorical_nested_df4crude %>%
   mutate(model = map(data, run_log1)) %>%
@@ -213,8 +213,8 @@ crude_results_cat
 
 # Clean the outputs of the model runs from above. Define a function to 
 # clean model outputs. Then merge together. The resulting data frame object 
-# called "crude_results_all" removes the intercept values, and reports 
-# the coefficient (and 95% CIs), standard error, p-value, and the original 
+# called "crude_results_all" removed the intercept values, and reported 
+# coefficients (and 95% CIs), standard errors, p-values, and the original 
 # names of variables. More formatting was needed to prepare for table for export.
 
 clean2 <- function(dat){
@@ -230,14 +230,14 @@ clean2 <- function(dat){
     )
 }
 
-# Apply function and combine. 
+# Apply cleaning function and combine. 
 
 crcont <- clean2(crude_results_cont) %>% select(-data)
 crcat <- clean2(crude_results_cat) %>% select(-data)
 crude_results_all <- bind_rows(crcat, crcont) 
 crude_results_all
 
-# Tidy the outputs by ordering the predictors according to how it was shown 
+# Tidy the outputs by ordering the predictors according to how it appeared 
 # in the paper. 
 
 TableOrder <-  c("perc_hisp_any",
@@ -318,10 +318,7 @@ stopifnot(nrow(nested_df4adj)==6)
 # Include terms for county-level demographic variables, water system characteristics, and wastewater flow. 
 # Exclude point source terms (except for wastewater flow). 
 # 
-# The base formula is adjusted for each model based on the outcome being modeled. 
-# Adjust the base formula to include contaminant-specific sources, which
-# vary by outcome (e.g., 1,4-dioxane detect = [base formula] + any 1-4d facility).
-# Remove system size as a variable in the 1,1-DCA regression.
+# The base formula was adjusted for each model according to the outcome. 
 # 
 # Include a state intercept term at the end of the equation.
 
@@ -343,9 +340,9 @@ nested_df4adj2 <- nested_df4adj %>%
   mutate(my_formula = paste(my_formula, " + (1|state)")) 
 
 # Visual check that the formulas make sense with the outcomes
-nested_df4adj2 %>%
-  distinct(outcome_name, my_formula) #%>%
-  #view()
+# nested_df4adj2 %>%
+#   distinct(outcome_name, my_formula) #%>%
+#   #view()
 
 # * Function and run adjusted model -------------------------------------------
 
@@ -377,16 +374,31 @@ adjusted_results <- nested_df4adj2 %>%
   unnest(model_results) 
 
 # Visual inspection 
-adjusted_results %>%
-  select(outcome_name, term, n, p.value, estimate, conf.low, conf.high) #%>%
-  #view()
+# adjusted_results %>%
+#   select(outcome_name, term, n, p.value, estimate, conf.low, conf.high) #%>%
+#   #view()
 
-# * Combine and clean outputs --------------------------------------------------
+# * Clean outputs --------------------------------------------------
 
-# Clean the outputs of the results, then merge together. Add p-value stars.
+# Remove intercepts. Similar to function defined above, clean odds ratios and 
+# the 95% CIs. Stars were added to facilitate interpretation. 
 
-# Order the explantory variables (predictors):
-TableOrder_vec2 <- 
+adjusted_results2 <- adjusted_results %>% 
+  filter(!str_detect(term, "Intercept")) %>%
+  select(-data) %>%
+  mutate(estimate = format(round(estimate, 2), nsmall = 2), 
+         conf.low = format(round(conf.low, 2), nsmall = 2),
+         conf.high = format(round(conf.high, 2), nsmall = 2), 
+         estimate_edit = paste0(estimate, " (", conf.low, ", ", conf.high, ")"), 
+         p_star = gtools::stars.pval(p.value), 
+         p_format = 
+           format.pval(p.value, eps = 0.001, nsmall = 2, digits = 2)
+  )
+
+# Tidy the outputs by ordering the predictors according to how it appeared 
+# in the paper. 
+
+TableOrder2 <- 
   c("perc_hisp_any", 
     "perc_black_nohisp",
     "mdi_rate", 
@@ -405,7 +417,7 @@ TableOrder_vec2 <-
     "src_epa_present_bin",
     "n_MFTA_airport_bin", 
     
-    # for adjusted regressions:
+    # unique names used as terms in adjusted regressions:
     "n_fac_any_bin1",
     "n_fac_diox_bin1",
     "n_fac_chlor_solv_bin1",
@@ -413,29 +425,14 @@ TableOrder_vec2 <-
     "src_epa_present_bin1",
     "n_MFTA_airport_bin1",
     
-    # for supplementary regressions:
-    "perc_hmown", "perc_pov_ppl", "perc_uninsur")
-
-# Clean coefficients and upper and lower bound results 
-# Had challenges rounding the p-values, will do in Excel
-
-adjusted_results2 <- adjusted_results %>% 
-  filter(!str_detect(term, "Intercept")) %>%
-  select(-data) %>%
-  mutate(estimate = format(round(estimate, 2), nsmall = 2), 
-         conf.low = format(round(conf.low, 2), nsmall = 2),
-         conf.high = format(round(conf.high, 2), nsmall = 2), 
-         estimate_edit = paste0(estimate, " (", conf.low, ", ", conf.high, ")"), 
-         p_star = gtools::stars.pval(p.value), 
-         p_format = 
-           format.pval(p.value, eps = 0.001, nsmall = 2, digits = 2)
-  )
-
-# Order the table, almost ready to export 
+    # move these terms to the end of the list (used for sensitivity check)
+    "perc_hmown", 
+    "perc_pov_ppl", 
+    "perc_uninsur")
 
 adjusted_results3 <- adjusted_results2 %>%
   select(outcome_name, term, n, estimate_edit, p_format, p_star) %>%
-  mutate(term = factor(term, levels = TableOrder_vec2)) %>%
+  mutate(term = factor(term, levels = TableOrder2)) %>%
   arrange(term)
 
 adjusted_results_export <- adjusted_results3 %>%
@@ -455,7 +452,8 @@ adjusted_results_export <- adjusted_results3 %>%
     starts_with("det_pfas")
   )
 
-# SAVE HERE: 
+# Save progress. 
+
 # write.csv(adjusted_results_export,
 #           paste0("results/Table 4. Adjusted Logistic Results_",
 #                  Sys.Date(),
