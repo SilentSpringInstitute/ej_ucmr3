@@ -10,10 +10,34 @@ library(readxl)
 
 options(stringsAsFactors = FALSE)
 
+# If needed, uncomment to set working directory here.
+# workingdir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+# setwd(workingdir)
+# getwd()
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Overview ----------------
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# This script downloads various county-level data and processes them prior to linking
+# them to water systems in a later script ("1_combine_process.R"). Data sets 
+# were downloaded from online public databases in 2020. Copies of the original 
+# input files are available upon request. County-level data included 
+# race/ethnicity and socioeconomic variables from 2010-2014 American Community Survey (ACS),
+# deprivation rates and urbanicity from the U.S. Census Bureau, wastewater treatment 
+# plants and effluent flow from the US EPA 2012 EPA Clean Watersheds Needs Survey, 
+# select industrial facilities from the Toxics Release Inventory, PFAS point 
+# sources identified in Hu et al. (2016) (https://doi.org/10.1021/acs.estlett.6b00260), 
+# and public water system characteristics from US EPA Safe Drinking Water
+# Information System Federal Reporting System. Not all variables compiled in 
+# the following script was used in subsequent analyses and was an artefact of 
+# previous EJ analyses. 
+# 
+
 # Function ---------------------------------------------------------------
 
 # This function cleans county names manually to create linkages between datasets. 
-# Mostly used in cleaning names in datasets of point sources. 
+# It was mostly used to clean names in datasets of point sources. 
 
 correct_counties <- function(dat){
   dat %>% 
@@ -172,7 +196,7 @@ county14tenureraw <- read.csv("raw/2014 5yr/ACS_14_5YR_B25003_with_ann.csv")
 
 county14soc <- county14socraw[2:nrow(county14socraw), c("GEO.id", "GEO.id2", "GEO.display.label", "HC03_VC95", "HC03_VC142", "HC03_VC173")] %>%
   rename(geography = GEO.display.label, 
-         perc_hs_grad = ,
+         # perc_hs_grad = ,
          perc_foreign_noncit = HC03_VC142, 
          perc_poor_eng = HC03_VC173)
 
@@ -211,7 +235,7 @@ county14all <- left_join(county14eco, county14soc) %>%
                                TRUE ~ geography), 
          geography = tolower(geography))
 
-cn14 <- county14all # shorten var name
+cn14 <- county14all 
 
 # Load 2017 multiple deprivation index (MDI) ----------------------------------------
 
@@ -221,24 +245,32 @@ cn14 <- county14all # shorten var name
 
 mdi <- read_xls("raw/county-level-mdi-rates-2017.xls", n_max = 3143) 
 
-# introduces NAs for "X"
+# Three counties did not have MDI rates published in this dataset (GEO.id2 = "10003", "35039", "42101"). 
+# For these counties, use NA instead of supplying a value. (Consider an alternative.)
+# In addition, all county IDs should have five digit codes. For IDs with 4 digits, 
+# add a leading zero. This chunk returns a warning message that can be ignored.
 
 mdi2 <- mdi %>% 
-  mutate(GEO.id2 = ifelse(nchar(county) == 4, 
-                          paste0("0", county), 
-                          as.character(county))) %>% 
-  mutate(mdi_rate = if_else(`MDI rate` == "X", 
-                            as.numeric(NA),
-                            100*as.numeric(`MDI rate`)
-                            )) 
+  mutate(GEO.id2 = if_else(
+    nchar(county) == 4, 
+    paste0("0", county), 
+    as.character(county)
+    )) %>% 
+  mutate(mdi_rate = if_else(
+    GEO.id2 %in% c("10003", "35039", "42101"), 
+    as.numeric(NA), 
+    100*as.numeric(`MDI rate`)
+    )) 
 
 # Load 2010 urbanicity ---------------------------------------------------------
 
-# 1-year 2010 ACS estimates. 
+# Urbanicity, called "perc_urban", was calculated as the proportion of the 
+# county area (defined by census tracts or blocks) with greater than 50,000 people,
+# from 2010 estimates. 
 
 cnurban <- read.csv("raw/2010 urban/DEC_10_SF1_H2_with_ann.csv", skip = 1)
 
-#count of housing units in urban areas
+# count housing units in urban areas
 cnurban2 <- cnurban %>% 
   mutate(Total. = gsub("\\(.*\\)", "", Total.),
          Total. = as.numeric(Total.),
@@ -257,7 +289,7 @@ cnurban2 <- cnurban %>%
          geography = gsub("la salle parish, louisiana", "lasalle parish, louisiana", geography),
          geography = gsub("bedford city, virginia", "bedford county, virginia", geography)
   ) %>%
-  #add together bedford city and bedford county
+  #add bedford city and bedford county together
   group_by(geography, GEO.id2) %>% 
   summarize_all(sum)
 
@@ -271,7 +303,65 @@ cnurban3 <- cnurban2 %>%
   summarise(perc_urban = 100*urb.house/all.house)
 cnurban3
 
-# Load Toxics Release Inventory (TRI) ------------------------------------------
+# Load wastewater data ------------------------------------------------------
+
+# Wastewater treatment plant locations and reported effluent flows were reported in 
+# EPA 2012 Clean Watershed Survey. Loading triggered a parsing warning since 
+# two columns were expected to contain all numbers, but for two counties, 
+# values were inputted as "-". These were read in as "NA"; replace with zeros. 
+
+src_wwtp <- read_csv("raw/PFAS point source data/Data/WWTP facility_details.csv")
+
+src_wwtp1 <- src_wwtp %>%
+  mutate(`Existing Total Flow (Mgal/d)` = replace_na(`Existing Total Flow (Mgal/d)`, 0))
+
+# mean(src_wwtp1$`Existing Total Flow (Mgal/d)`) # 2.25 
+# max(src_wwtp1$`Existing Total Flow (Mgal/d)`) # 812
+
+# Set up correct county names for linkages. 
+
+src_wwtp2 <- src_wwtp1 %>% 
+  left_join(key_states, by = c("State" = "state_abbr")) %>% 
+  mutate(geography = ifelse(State != "LA",
+                            paste0(tolower(`County Name`), " county, ", 
+                                   tolower(state_name)),
+                            paste0(tolower(`County Name`), " parish, ", 
+                                   tolower(state_name))))
+
+src_wwtp3 <- src_wwtp2 %>% correct_counties() 
+
+# For each county, calculate the number of wastewater plants and the 
+# total effluent flow. 
+
+src_wwtp4 <- src_wwtp3 %>% 
+  group_by(geography) %>% 
+  summarise(n_WWTP = length(unique(`CWNS Number`)), 
+            WWTP_totalflow_mgd = sum(`Existing Total Flow (Mgal/d)`))
+
+# Load county land area size from Census Bureau. Use to normalize wastewater 
+# flow by area. Normalizing occurs in a different script. 
+# Note that the original file reported land area in acres.
+
+landarea <- read.csv("raw/land area/DEC_10_SF1_G001_with_ann.csv")
+
+# Pull out land area
+landarea1 <- landarea[2:nrow(landarea),] %>%
+  select("GEO.id2", "VD067") %>%
+  rename(land.area = VD067) %>%
+  mutate(land.area = as.numeric(land.area),
+         #merge bedford city into bedford county
+         GEO.id2 = case_when(GEO.id2 == "51515" ~ "51019",
+                             TRUE ~ GEO.id2))
+
+landarea2 <- landarea1 %>% 
+  group_by(GEO.id2) %>% 
+  summarize_all(sum)
+
+length(unique(landarea2$GEO.id2)) #3142 counties
+
+stopifnot(landarea2$GEO.id2 %in% cn14$GEO.id2)
+
+# Load Toxics Release Inventory (TRI) data ------------------------------------
 
 # https://www.epa.gov/toxics-release-inventory-tri-program/tri-toolbox
 
@@ -342,9 +432,7 @@ tri1 <- tri_basic_sub %>%
   left_join(tri0, by = c("FRS ID" = "FRS_ID",
                          "YEAR" = "REPORTING_YEAR"))
 
-# Combine TRI data files. 
-
-# clean county names.
+# Combine TRI data files and clean county names.
 
 tri1.1 <- tri1 %>%
   select(`FRS ID`, COUNTY,  ST, STATE_COUNTY_FIPS_CODE, `CAS #/COMPOUND ID`, 
@@ -396,34 +484,10 @@ tri4 <- tri3 %>%
   mutate_all(., ~replace_na(.,0)) %>%
   rename(GEO.id2 = 1)
 
-# Load county land area size ---------------------------------------------------
-
-# Used to normalize wastewater flow.
-# Note: land.area is in ACRES units.
-
-landarea <- read.csv("raw/land area/DEC_10_SF1_G001_with_ann.csv")
-
-# Pull out land area
-landarea1 <- landarea[2:nrow(landarea),] %>%
-  select("GEO.id2", "VD067") %>%
-  rename(land.area = VD067) %>%
-  mutate(land.area = as.numeric(land.area),
-         #merge bedford city into bedford county
-         GEO.id2 = case_when(GEO.id2 == "51515" ~ "51019",
-                             TRUE ~ GEO.id2))
-
-landarea2 <- landarea1 %>% 
-  group_by(GEO.id2) %>% 
-  summarize_all(sum)
-
-length(unique(landarea2$GEO.id2)) #3142 counties
-
-stopifnot(landarea2$GEO.id2 %in% cn14$GEO.id2)
 
 # Load PFAS point sources ------------------------------------------------------
 
 src_epa <- epastewardship <- read_excel("raw/PFAS point source data/Data/EPA 2010.2015 PFOA Stewardship Program sites.xlsx")
-src_wwtp <- WWTPfacilities <- read_csv("raw/PFAS point source data/Data/WWTP facility_details.csv")
 src_mfta <- MFTA <- read_excel("raw/PFAS point source data/Data/all MFTA_county.xlsx")
 src_airprt <- airports <- read_excel("raw/PFAS point source data/Data/Part 139_cert_airports.xlsx")
 
@@ -446,24 +510,6 @@ src_airprt2 <- src_airprt1 %>%
   group_by(geography) %>% 
   summarise(n_airports = n())
 
-# * WWTP -----------------------------------------------------------------------
-
-src_wwtp1 <- src_wwtp %>%
-  mutate(`Existing Total Flow (Mgal/d` = replace_na(0))
-
-src_wwtp1.1 <- src_wwtp1 %>% 
-  left_join(key_states, by = c("State" = "state_abbr")) %>% 
-  mutate(geography = ifelse(State != "LA",
-                            paste0(tolower(`County Name`), " county, ", 
-                                   tolower(state_name)),
-                            paste0(tolower(`County Name`), " parish, ", 
-                                   tolower(state_name))))
-
-src_wwtp2 <- src_wwtp1.1 %>% correct_counties() 
-
-src_wwtp3 <- src_wwtp2 %>% group_by(geography) %>% 
-  summarise(n_WWTP = length(unique(`CWNS Number`)), 
-            WWTP_totalflow_mgd = sum(`Existing Total Flow (Mgal/d)`))
 
 # * Military and fire training areas (MFTA) ------------------------------------
 
@@ -576,7 +622,7 @@ fips_check1.1 <- fips_check1 %>% distinct(PWSID, State) # 122 systems do not hav
 cn14.1 <- cn14 %>%
   left_join(mdi2) %>%
   left_join(cnurban3) %>%
-  left_join(src_wwtp3) %>% 
+  left_join(src_wwtp4) %>% 
   left_join(src_epa1) %>% 
   left_join(src_airprt2) %>% 
   left_join(src_mfta3) %>%
