@@ -28,13 +28,16 @@ options(stringsAsFactors = FALSE)
 #     and PFOS combined, eg)
 #   * Detection of a target contaminant, which was met if a system had at least 
 #     one sample that contained 1,4-dioxane, HCFC-22, 1,1-dichloroethane, or 
-#     one of the six PFAS tested in the UCMR3. 
+#     one of the six PFAS tested in the UCMR3.
+#
 # There are a total of six main outcomes: 
 #  * detection of any target contaminant 
 #  * detection of 1,4-dioxane 
 #  * detection of HCFC-22 
 #  * detection of 1,1-dichlorethane (1,1-DCA)
-#  * detection of one or more of six PFAS compounds in the UCMR3. 
+#  * detection of one or more of six PFAS compounds in the UCMR3
+#  * exceedance of >=1 EPA health reference level
+#
 # Target chemicals were defined as industrial contaminants measured during 
 # List 1 monitoring during the UCMR3 and were detected with at least 1% of 
 # samples to ensure sufficient statistical power. 
