@@ -4,103 +4,78 @@
 # LATEST REVISION: 2024-11-12 
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
+# start here:
+source("1_combine_process.R")
+source("4__regressions_main.R")
+
 library(tidyverse)
 library(lme4)
 library(broom.mixed)
 library(gtools) 
-
-# Start here:
-source("1_combine_process.R")
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Overview ----------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # This script produces regression tables included in the supplement. 
+# 
+# The first section conducts logistic mixed-effect models without certain point 
+# source terms and wastewater. The aim was to compare how robust associations 
+# were between the outcome and explanatory variables with and without 
+# facilities and wastewater as explanatory variables. Specifically, since facility 
+# siting could be driven by race/ethnicity and SES, including point sources 
+# as terms in the model may be attenuating the relationship between demographics
+# and contaminant detections. This model was compared with results from the 
+# adjusted model. 
 
-#+ MDI is a multidimensional socioeconomic indicator. Unidimensional SES indicators-- 
-#+ i.e., % of people below the poverty level, % of people without insurance, 
-#+ and % of people who are homeowners--are explored here. We are looking at:
-#+ 1) Is the direction AND/OR magnitude between det/viol and SES different between
-#+    unidimensional vs multidimensional SES indicators?
+# The second section conducts logistic mixed-effect models using socioeconomic 
+# (SES) variables other than percent deprived (or MDI). 
 
-
-
-# Also run script "3. analyze ucmr3 - crude & adj.R" to get adj_results_clean. 
-# source("3. analyze ucmr3 - crude & adj.R")
-adj_res_clean_tidy
-adjusted_results_export
-
-
+# The overall structure of the script is similar to "4__regressions_main.R"
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # With and without source terms ----------------------------------------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#+ Point sources are a direct pathway to contamination. The primary hypothesis is 
-#+ that community demographics is associated with contamination independent of 
-#+ source terms. This section evaluates demographic estimates (w/ other adjustments)
-#+ with and without source terms.
-#+ 
-#+ This produces a table directly comparing covariate's percent change estimates
-#+ with and without source terms in the model.
+# Prepare a nested data frame.
 
-## Prepare a nested dataframe to run over with the regression models.
-# Pivot the OUTCOME variables ONLY, then nest.
-
-nested_data_for_suppreg1 <- dat_clean %>%
-  pivot_longer(cols = c(starts_with("det_"), starts_with("viol_"))) %>%
+nested_data4supp <- dat_clean %>%
+  select(-viol_dca, -viol_diox, -viol_pfas) %>%
+  pivot_longer(cols = c(starts_with("det_"), starts_with("viol_")), 
+               names_to =  "outcome_name", 
+               values_to = "outcome_value") %>%
   mutate(add_source = "N") %>%
-  group_by(name, add_source) %>%
+  group_by(outcome_name, add_source) %>%
   nest() 
 
-# Define a base formula (main equation, which includes sociodemographic variables,
-# system characteristics, and wastewater, but excludes contaminant-specific sources).
-# Adjust the base formula to include contaminant-specific sources, which
-# vary by outcome (e.g., 1,4-dioxane detect = [base formula] + any 1-4d facility).
-# Remove system size as a variable in the 1,1-DCA regression 
-# Add a state intercept term at the end of the equation.
+# Define a base formula.
+# Include terms for county-level demographic variables, water system characteristics, and wastewater flow. 
+# Exclude point source terms (except for wastewater flow). 
+# 
+# The base formula was adjusted for each model according to the outcome. 
+# 
+# Include a state intercept term at the end of the equation.
 
-base_formula3 <- paste(
-  "~ perc_hisp_any + perc_black_nohisp + mdi_rate +",
-  "perc_urban + size + pws_type + n_samples",
+base_formula <- paste(
+  "outcome_value ~ perc_hisp_any + perc_black_nohisp + mdi_rate +",
+  "perc_urban + size + pws_type + n_samples + (1|state)",
   collapse = " "
 )
 
-nested_data_for_suppreg1_add_form <- nested_data_for_suppreg1 %>%
-  mutate(my_formula = paste("value", base_formula3)) %>%
-  # mutate(my_formula = case_when(str_detect(name,"any") ~ paste(my_formula, "+ n_fac_any_bin"), 
-  #                               str_detect(name, "diox") ~ paste(my_formula, "+ n_fac_diox_bin"), 
-  #                               str_detect(name, "dca") ~ paste(my_formula, "+ n_fac_chlor_solv_bin"), 
-  #                               str_detect(name, "hcfc") ~ paste(my_formula, "+ n_fac_cfc_bin"), 
-  #                               str_detect(name, "pfas") ~ paste(my_formula, "+  n_MFTA_airport_bin + src_epa_present_bin"), 
-  #                               TRUE ~ "9999")) %>%
-  # {stopifnot(nrow(filter(., my_formula == "9999"))==0); .;} %>%
-  mutate(my_formula = paste(my_formula, " + (1|state)")) # %>%
-  # mutate(my_formula = if_else(
-  #   name == "det_dca", 
-  #   str_remove(my_formula, "size \\+ "), 
-  #   my_formula
-  # ))
+nested_data4supp2 <- nested_data4supp %>%
+  mutate(my_formula = base_formula)
 
-## Filter the nested data to include the outcomes of interest only. 
-# Note: Only 1 PWS (PWSID: IL2010300) had a sample of 1,1-DCA with conc > health guidance value. 
+# check equation
+# nested_data4supp2 %>%
+#   select(-data) %>%
+#   view()
 
-nested_data_ready3 <- nested_data_for_suppreg1_add_form %>% 
-  filter(name %in% c("det_any", "viol_any", "det_diox", "det_dca", "det_hcfc", "det_pfas"))
-
-# Visual check that the formulas make sense with the outcomes
-nested_data_ready3 %>%
-  distinct(name, add_source, my_formula) #%>%
-  # view()
-
-## Apply the multiple logistic mixed effect function over the nested data. 
-
-# Mixed effects model for adjusted regression 
-# uses lme4 package and glmer() function 
-# Fit a generalized linear mixed-effects model (GLMM).
-# Both fixed effects and random effects are specified via the model formula.
-# uses broom.mixed package and tidy() function to clean outputs
+# Create a function that conducts adjusted logistic mixed-effects models. 
+# Use tidy() to save from the broom.mixed package to clean model results as a 
+# tidy data frame object. Calculate odds ratios and 95% CI.
+# This will be used to loop over a list-column of a nested data frame.
+# As of 6/26/24, we removed percent change formatting. 
+# Note- same function as in "4__regressions_main.R"
 
 run_log2 <- function(dat, formula){
   lme4::glmer(formula = formula,
@@ -109,9 +84,10 @@ run_log2 <- function(dat, formula){
     broom.mixed::tidy(exponentiate = TRUE, conf.level = 0.95, conf.int = TRUE)
 }
 
-# This may take a while to run! (Estimated: 2 mins)
+# Apply the function "run_log2()" over the list-column in the nested 
+# data frame. This may take a while to run. (Estimated: 1.5 mins). 
 
-suppl1_reg_results <- nested_data_ready3 %>%
+suppl1_reg_results <- nested_data4supp2 %>%
   mutate(n = map_dbl(data, ~sum(!is.na(.$value)))) %>%
   mutate(model_results = 
            map(data,
@@ -119,39 +95,9 @@ suppl1_reg_results <- nested_data_ready3 %>%
                          formula = my_formula))) %>%
   unnest(model_results) 
 
-# Visual inspection 
-suppl1_reg_results %>%
-  select(name, term, n, p.value, estimate, conf.low, conf.high) #%>%
-# view()
+# Clean the output. Remove intercepts. Format odds ratios and the 95% CIs. 
 
-## Clean the outputs of the results, then merge together. Add p-value stars.
-
-# Order the explantory variables (predictors):
-TableOrder_vec2 <- 
-  c("perc_hisp_any", "perc_black_nohisp", "mdi_rate", "perc_urban", 
-    "size", "sizeL",
-    "pws_type",  "pws_typeGW", "pws_typeMX", 
-    "n_samples", "adj_wwtp_flow", "n_fac_any_bin",
-    "n_fac_diox_bin", "n_fac_chlor_solv_bin", "n_fac_cfc_bin",
-    "src_epa_present_bin", "n_MFTA_airport_bin", 
-    
-    # for adjusted regressions:
-    "n_fac_any_bin1",
-    "n_fac_diox_bin1",
-    "n_fac_chlor_solv_bin1",
-    "n_fac_cfc_bin1",
-    "src_epa_present_bin1",
-    "n_MFTA_airport_bin1",
-    
-    # for supplementary regressions:
-    "perc_hmown", "perc_pov_ppl", "perc_uninsur")
-
-# Clean coefficients and upper and lower bound results 
-# Had challenges rounding the p-values, will do in Excel
-
-# colnames(adjusted_results)
-
-suppl1_res_clean_estimates <- suppl1_reg_results %>% 
+suppl1_reg_results2 <- suppl1_reg_results %>% 
   filter(!str_detect(term, "Intercept")) %>%
   select(-data) %>%
   mutate(estimate = format(round(estimate, 2), nsmall = 2), 
@@ -163,20 +109,49 @@ suppl1_res_clean_estimates <- suppl1_reg_results %>%
            format.pval(p.value, eps = 0.001, nsmall = 2, digits = 2)
   )
 
+# Tidy the outputs by ordering the predictors according to how it appeared 
+# in the paper. 
 
-# Order the table, almost ready to export 
+TableOrder3 <-   c("perc_hisp_any", 
+                   "perc_black_nohisp", 
+                   "mdi_rate",
+                   "perc_urban", 
+                   "size",
+                   "sizeL",
+                   "pws_type",
+                   "pws_typeGW",
+                   "pws_typeMX", 
+                   "n_samples", 
+                   "adj_wwtp_flow",
+                   "n_fac_any_bin",
+                   "n_fac_diox_bin",
+                   "n_fac_chlor_solv_bin", 
+                   "n_fac_cfc_bin",
+                   "src_epa_present_bin",
+                   "n_MFTA_airport_bin", 
+                   
+                   # for adjusted regressions:
+                   "n_fac_any_bin1",
+                   "n_fac_diox_bin1",
+                   "n_fac_chlor_solv_bin1",
+                   "n_fac_cfc_bin1",
+                   "src_epa_present_bin1",
+                   "n_MFTA_airport_bin1",
+                   
+                   # for supplementary regressions:
+                   "perc_hmown", "perc_pov_ppl", "perc_uninsur")
 
-suppl1_res_clean_tidy <- suppl1_res_clean_estimates %>%
-  select(name, add_source, term, n, estimate_edit, p_format, p_star) %>%
+suppl1_reg_results3 <- suppl1_reg_results2 %>%
+  select(outcome_name, add_source, term, n, estimate_edit, p_format, p_star) %>%
   mutate(term = factor(term, levels = TableOrder_vec2)) %>%
   arrange(term)
 
-suppl1_res_to_merge <- suppl1_res_clean_tidy %>%
+suppl1_reg_results4 <- suppl1_reg_results3 %>%
   pivot_wider(
     id_cols =  c(term, add_source),
-    names_from = name,
+    names_from = outcome_name,
     values_from = c(estimate_edit, p_format, p_star),
-    names_glue = "{name}_{.value}"
+    names_glue = "{outcome_name}_{.value}"
   ) %>%
   select(
     term, 
@@ -189,13 +164,16 @@ suppl1_res_to_merge <- suppl1_res_clean_tidy %>%
     starts_with("det_pfas")
   )
 
-## Combine with main adjusted models 
+# Adjusted model results from Table 3 in paper
 adj_res_to_merge <- adjusted_results_export %>% mutate(add_source = "Y")
-suppl1_res_clean_export <- rbind(suppl1_res_to_merge, adj_res_to_merge)
-suppl1_res_clean_export <- suppl1_res_clean_export %>% arrange(term, add_source)
 
-## SAVE HERE:
-# write.csv(suppl1_res_clean_export,
+# Bind main result and supplemental result together
+suppl1_reg_results5 <- rbind(suppl1_reg_results4, adj_res_to_merge)
+suppl1_reg_results_export <- suppl1_reg_results5 %>% arrange(term, add_source)
+
+# Save progress. 
+
+# write.csv(suppl1_reg_results_export,
 #           paste0("results/SuppTable. Adj model results with & without source terms.csv_",
 #                  Sys.Date(),
 #                  ".csv")
@@ -744,8 +722,3 @@ suppl2_reg_results_export <- suppl2_reg_results_tidy %>%
 #          p_stars, p_clean) %>%
 #   mutate(term = factor(term, levels = TableOrder_vec2)) %>%
 #   arrange(term)
-# 
-# 
-# 
-# 
-# 
