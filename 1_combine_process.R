@@ -6,15 +6,32 @@
 
 library(tidyverse)
 
-workingdir <- dirname(rstudioapi::getActiveDocumentContext()$path)
-setwd(workingdir)
-getwd()
+# If needed:
+# workingdir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+# setwd(workingdir)
+# getwd()
 
-# ! Start here
-# Sourcing previous scripts --------------------------------------------------
-
+# start here:
 source("1__ucmr3_process.R")
 source("1__demo_process.R")
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Overview --------------------------------------------------------
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# 
+# This script combines the outputs of 1__ucmr3_process.R and 1__demo_process.R
+# and creates a data set to use for all subsequent scripts. The first script
+# used the UCMR3 data to define outcome variables. The second script 
+# used various public data on information about customers served by US water 
+# systems. In particular, the demographic processing script loads and processes
+# county-level information about demographics like ethnicity (e.g., the percent of Hispanic 
+# residents in a county according to estimates from the 2010-2014 ACS survey).
+#
+# The end result of this script is "dat_clean," which is used throughout the repo. 
+# It is a dataset of UCMR3 water systems with columns linking them to information 
+# about county or counties served. Each row in dat_clean is one PWS. For PWS 
+# that serve multiple counties, this script computes a population-weighted 
+# average of demographic variables of interest (e.g., % Hispanic). 
 
 # Function --------------------------------------------------
 
@@ -34,33 +51,24 @@ classify_state <- function(dat, state_col) {
   return(dat)
 }
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# 1. INITIAL MERGE --------------------------------------------------------
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-# Data sources: 
-# fips: dataset of PWSID linked to SDWIS data (popn served) and county ids (GEO.id2) 
-# cn15: dataset of county-level demographics and pollution sources
-
-# length(unique(fips$PWSID)) == nrow(fips)
-# fips %>% count(PWSID) %>% filter(n > 1) # systems that serve >1 county
-
-# length(unique(cn15$GEO.id2)) == nrow(cn15)
-# cn15 %>% count(GEO.id2) %>% filter(n > 1) # county #34015 (gloucester county, new jersey) duplicated
-# cn15 %>% filter(GEO.id2=="34015") %>% distinct()
-# distinct(cn15) %>% nrow() == nrow(cn15) - 1
-cn15 <- distinct(cn15)
+# First merge --------------------------------------------------------
 
 # This merges FIPS codes with census info
 fips_cn15 <- fips %>% left_join(cn15, relationship = "many-to-many")
 
+# check that each water system-county pair does not appear more than once. 
+# Two systems, both in Bedford County, Virginia, are duplicated in the data but 
+# are not the UCMR3. These duplicates come from some of the manual editing from 
+# AHz in 1__demo_process.R.
+# fips_cn15 %>% count(PWSID, GEO.id2) %>% filter(n > 1) # n=2 systems
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# FIPS_CN15.2 == demographics (e.g., perc_hisp) ------------
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Finish processing demographics and wastewater flow ------------
 
-#+ This subsets all demographic vars that will need to be summarized 
-#+ into averages (i.e., pop-weighted means for PWS serving >1 counties).
+# For each system-county pair, calculate % homeownership as the proportion of residents who own a home. 
+# Also calculate the amount of wastewater flow in MGD/km2. Note that 
+# the original land area values were reported in acres. 
+# Then select (subset) demographic vars that will need to be summarized 
+# into population weighted means for systems that serve multiple counties.
 
 fips_cn15.1 <- fips_cn15 %>%
   mutate(perc_hmown = 100*owned.house/all.house14) %>% 
@@ -69,26 +77,24 @@ fips_cn15.1 <- fips_cn15 %>%
          adj_wwtp_flow = (3.78541*1e6)*adj_wwtp_flow_mgd_per_sqmeters) %>% 
   select(PWSID, GEO.id2, total_pop, mdi_rate, adj_wwtp_flow, starts_with("perc_"))
 
-# fips_cn15.1 %>%
-#   filter(PWSID %in% pwsids_diff_urban)
-
-# Which PWSIDs have more than one counties (GEO.id2)?
+# How many water systems serve more than one county (GEO.id2)? # n=283
 fips_cn15 %>%
   distinct(PWSID, GEO.id2) %>%
   group_by(PWSID) %>%
   summarise(n = n()) %>%
   filter(n > 1)
 
-# Summarise water system demographics
-# This may take a while to run! 
+# For each water system, calculate the population-weighted mean. 
+# This may take a few minutes to complete.
 fips_cn15.2 <- fips_cn15.1 %>% 
   group_by(PWSID) %>%
   summarise(across(c(mdi_rate, adj_wwtp_flow, starts_with("perc_")), 
                    ~weighted.mean(., w = total_pop)))
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# FIPS_CN15.3 == PWS chars from EPA SDWIS (e.g., pop served and ownership) -----
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# PWS chars from EPA SDWIS (e.g., population served) ---------------
+
+# Collect some information from SDWIS and rename the columns for clarity. 
+# Note that system ownership was not used in the analysis.
 
 fips_cn15.3 <- fips_cn15 %>%
   select(PWSID, PWS_NAME, WS.POPULATION_SERVED_COUNT, 
@@ -96,11 +102,11 @@ fips_cn15.3 <- fips_cn15 %>%
   rename(PWSID = 1, PWSName = 2, pop_served = 3, owner_type = 4) %>%
   distinct()
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# FIPS_CN15.4 == source terms (e.g., facility present or absent) ------------
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Presence of pollution sources of unregulated contaminants ------------
 
-# Summarise source terms vars for each PWS
+# For each water system, determine whether the system served a county that 
+# was linked to pollution source. Do this for each pollution source term separately. 
+
 fips_cn15.4 <- fips_cn15 %>%
   group_by(PWSID) %>% 
   summarise_at(vars(starts_with("n_"), src_epa_present),
@@ -112,9 +118,21 @@ fips_cn15.4 <- fips_cn15 %>%
   mutate(n_MFTA_airport_bin = ifelse(n_MFTA_bin == 1 | n_airports_bin == 1, 
                                      1, 0))
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# UCMR3.6 == PWS chars from UCMR (e.g., size, pws_type, state, n_samples) ------
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# System characteristics from UCMR3 -------------
+
+# The UCMR3 data contained some information about water systems that we will 
+# use for future analyses, including system size, source water type, state location. 
+# The total number of samples collected in the UCMR3 for each system was derived
+# based on data from the UCMR3. Samples were defined as unique 
+# combinations of facility ID, facility name, sample point ID, sample point name, 
+# and collection date. 
+# 
+# For source water type, we categorized systems as one of the following: 
+# * Groundwater system (GW) - reliant only on GW sources
+# * Surface water system (SW) - reliant only on SW sources
+# * MIX system (MIX) - reliant on a GW source that is under the influence of SW, 
+#   or is known to use a mix of GW and SW sources. 
+#
 
 ucmr3.6 <- ucmr3.0 %>% 
   distinct(PWSID, Size, FacilityWaterType, FacilityID, FacilityName, SamplePointID, SamplePointName, CollectionDate, State) %>%
@@ -131,9 +149,9 @@ ucmr3.6 <- ucmr3.0 %>%
   )
 
 # check
-ucmr3.0 %>% 
-  distinct(PWSID, FacilityWaterType) %>%
-  group_by(PWSID) %>% mutate(n = n()) %>% filter(n > 1)
+# ucmr3.0 %>% 
+#   distinct(PWSID, FacilityWaterType) %>%
+#   group_by(PWSID) %>% mutate(n = n()) %>% filter(n > 1)
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # MERGE IT ALL TOGETHER -------------------------------------------------------
@@ -178,36 +196,40 @@ dat_ucmr3 <- main %>%
 # colnames(dat_ucmr3)
 # summary(dat_ucmr3)
 
-# UNCOMMENT TO SAVE ------------
-# write.csv(dat_ucmr3, paste0("processed/main-ucmr3-dataset-merged_", Sys.Date(), ".csv"))
+# Last restriction ----------------------------------------------------------
 
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# Making a dat_clean ----------------------------------------------------------
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#+ This section also gives quick peeks into the data.
-#+ 
-#+        dat_ucmr3 = data without MDI restriction
-#+        dat_clean = data with MDI restriction 
-#+        
- 
-dat_ucmr3
-
-filter(dat_ucmr3, is.na(mdi_rate)) %>% nrow() #115 PWSs w/o MDI data
-filter(dat_ucmr3, is.na(mdi_rate)) %>% count(state_status) 
-#+ 7 PWSs in states, 79 in territories, 29 in tribes
-
-ucmr3$PWSID %>% unique() %>% length() # 5401 UCMR PWSs
-dat_ucmr3$PWSID %>% length() # 4923 PWSs in sample, total
-setdiff(ucmr3$PWSID, dat_ucmr3$PWSID) %>% unique() %>% length() # 478 UCMR PWSs not in this analysis
+# This line produces the final dataset used in later scripts. It restricts 
+# to systems that do not have missing data for MDI. Note that in later analyses, 
+# we found that most of systems excluded by this criteria were systems serving US tribal areas and 
+# US territories. A separate analysis based on data from "dat_ucmr3" is available 
+# elsewhere.
+# 
+#       dat_ucmr3 = data without MDI restriction
+#       dat_clean = data with MDI restriction 
 
 dat_clean <- dat_ucmr3 %>% filter(!is.na(mdi_rate))
 
-setdiff(dat_ucmr3, dat_clean) %>% pull(state_status) == "territory"
-setdiff(dat_ucmr3$PWSID, dat_clean$PWSID) %>% length() # 115 PWSs removed
+# Save progress. 
 
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# write.csv(dat_ucmr3, paste0("processed/main-ucmr3-dataset-merged_", Sys.Date(), ".csv"))
+# write.csv(dat_clean, paste0("processed/main-ucmr3-dataset-processed_", Sys.Date(), ".csv"))
+
 # ARCHIVE -----------------------------------------------------------------
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# #+        
+# 
+# dat_ucmr3
+# 
+# filter(dat_ucmr3, is.na(mdi_rate)) %>% nrow() #115 PWSs w/o MDI data
+# filter(dat_ucmr3, is.na(mdi_rate)) %>% count(state_status) 
+# #+ 7 PWSs in states, 79 in territories, 29 in tribes
+# 
+# ucmr3$PWSID %>% unique() %>% length() # 5401 UCMR PWSs
+# dat_ucmr3$PWSID %>% length() # 4923 PWSs in sample, total
+# setdiff(ucmr3$PWSID, dat_ucmr3$PWSID) %>% unique() %>% length() # 478 UCMR PWSs not in this analysis
+
+# setdiff(dat_ucmr3, dat_clean) %>% pull(state_status) == "territory"
+# setdiff(dat_ucmr3$PWSID, dat_clean$PWSID) %>% length() # 115 PWSs removed
 
 # write.csv(main, "main.csv")
 # 
