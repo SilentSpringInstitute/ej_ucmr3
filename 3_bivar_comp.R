@@ -156,7 +156,7 @@ func_mean_demo <- function(dat, xi){
   dat.1 <- dat.1 %>% mutate(p = t$p.value)
   dat.1 <- dat.1 %>% mutate(p_star = gtools::stars.pval(p))
 
-    return(dat.1)
+  return(dat.1)
 }
 
 # t-test: average perc deprived in counties with criteria TRI vs. none
@@ -181,7 +181,7 @@ county_results
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # Prepare data for plotting. Calculate standard errors, format p-values, and 
-# define factor and labels that will display in the plot. Note: in defining 
+# define factor and labels that display in the plot. Note: in defining 
 # factor levels of "y", we ignored demographic variables used for sensitivity 
 # analyses (ie, ignored percent poverty, percent homeownership, percent uninsured).
 
@@ -263,7 +263,7 @@ ggplot(county_ready2plot %>% filter(!is.na(y)),
 #  * Percent deprived 
 #  * Percent urban
 #  * Percent of people in poverty (for sensitivity check of using % deprived)
-#  * Percent of people who are uninsured (for sensitivity)
+#  * Percent of people who were uninsured (for sensitivity)
 #  * Percent of homeownership (for sensitivity)
 
 # Start with data frame object "dat_clean." See 1_combine_process.R. Select 
@@ -327,13 +327,15 @@ demo_pws_summary
 # Figure 2 ----------------------------------------------------------------
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# Description.
+# Description:
+#
 # x-axis : systems stratified by 2 groups w 2 outcomes each (detect/not; exceed/not)
-#          show as nested x-axis 
+#          show as nested x-axis.
 # y-axis : average % demographic variable (with 1 standard error). Four demographic 
 #          variables (% Hisp, % NH Black, % deprived, % urban).
-# in plot: p-value on the right-most bar of each bar grouping indicating whether 
-#          the difference in means was significant in t-tests.
+# in plot: p-value on the right-most bar of each bar grouping indicate whether 
+#          difference in means was significant in t-tests.
+#
 # color palette: 
 pal <- c("#9bccc6", "#50a6a6", '#c2a5cf', '#7b3294')
 
@@ -369,7 +371,7 @@ demo_pws_data4plot
 
 # Create stars using gtools package. Calculate standard error. Create a grouping
 # variable (called "x_group") to nest x-axis labels in the plot. This grouping 
-# variable is either the detection outcome or the exceedance outcome.
+# variable was either the detection outcome or the exceedance outcome.
 
 demo_pws_data_ready2plot <- demo_pws_data4plot %>% 
   mutate(p_stars = gtools::stars.pval(p), 
