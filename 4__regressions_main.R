@@ -4,6 +4,9 @@
 # LATEST REVISION: 2024-11-12 
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
+# Start here:
+source("1_combine_process.R")
+
 # for regression:
 library(lme4)             # glmer() 
 # help(lme4)
@@ -11,9 +14,6 @@ library(lme4)             # glmer()
 # for cleaning outputs of regression model runs:
 library(gtools)           # stars.pval()
 library(broom.mixed) 
-
-# Start here:
-source("1_combine_process.R")
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Overview ----------------
