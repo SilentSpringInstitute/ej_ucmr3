@@ -18,7 +18,7 @@ Libraries used
 
 Scripts in this repo are grouped and intended to run in order. 
 
-Series 1: processing scripts. 
-Series 2: univariate analyses. 
-Series 3: bivariate analyses. 
-Series 4: multivariate (regression) analyses. 
+ - Series 1: processing scripts. 
+ - Series 2: univariate analyses. 
+ - Series 3: bivariate analyses. 
+ - Series 4: multivariate (regression) analyses. 
