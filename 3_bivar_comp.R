@@ -174,7 +174,8 @@ county_results
 
 # Save progress.
 
-# write.csv(county_results, paste0("results/Suppl. Mean demos and TRI facs.csv"))
+# write.csv(county_results, paste0("results/Suppl. Mean demos and TRI facs_", 
+#                                  Sys.Date(), ".csv"))
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Figure 1 ----------------------------------------------------------------
@@ -247,7 +248,8 @@ ggplot(county_ready2plot %>% filter(!is.na(y)),
 # Save progress.
 
 # ggsave(plot = last_plot(),
-#        filename = paste0("results/Figure 1. Demographics and TRI facility.pdf"),
+#        filename = paste0("results/Figure 1. Demographics and TRI facility_",
+#                          Sys.Date(), ".pdf"),
 #        width = 7, height = 6)
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -323,7 +325,9 @@ demo_pws_summary
 
 # Save progress.
 
-# write.csv(demo_pws_summary, paste0("results/", Sys.Date()," Mean demographic levels by PWS outcomes.csv"))
+# write.csv(demo_pws_summary, paste0("results/Mean demographic levels by PWS outcomes_",
+#                                    Sys.Date(), 
+#                                    ".csv"))
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Figure 2 ----------------------------------------------------------------
@@ -453,7 +457,8 @@ ggplot(demo_pws_data_ready2plot,
         strip.text.y.left = element_text(size = 10))
       
 # ggsave(plot = last_plot(),
-#        paste0("results/Fig 2. Compare average demographics between water systems.pdf"),
+#        paste0("results/Fig 2. Compare average demographics between water systems_", 
+#               Sys.Date(), ".pdf"),
 #        scale = 1.3,
 #        height = 5,
 #        width = 5)
