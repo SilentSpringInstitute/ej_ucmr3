@@ -143,7 +143,7 @@ TableOrder3 <-   c("perc_hisp_any",
 
 suppl1_reg_results3 <- suppl1_reg_results2 %>%
   select(outcome_name, add_source, term, n, estimate_edit, p_format, p_star) %>%
-  mutate(term = factor(term, levels = TableOrder_vec2)) %>%
+  mutate(term = factor(term, levels = TableOrder3)) %>%
   arrange(term)
 
 suppl1_reg_results4 <- suppl1_reg_results3 %>%
@@ -174,7 +174,7 @@ suppl1_reg_results_export <- suppl1_reg_results5 %>% arrange(term, add_source)
 # Save progress. 
 
 # write.csv(suppl1_reg_results_export,
-#           paste0("results/SuppTable. Adj model results with & without source terms.csv_",
+#           paste0("results/SuppTable. Adj model results with & without source terms_",
 #                  Sys.Date(),
 #                  ".csv")
 #           )
@@ -329,7 +329,7 @@ clean3 <- function(dat){
     mutate(estimate = format(round(estimate, 2), nsmall = 2), 
            conf.low = format(round(conf.low, 2), nsmall = 2),
            conf.high = format(round(conf.high, 2), nsmall = 2), 
-           estimate_edit = paste0(estimate, " \n(", conf.low, ", ", conf.high, ")"), 
+           estimate_edit = paste0(estimate, " (", conf.low, ", ", conf.high, ")"), 
            p_star = stars.pval(p.value), 
            p_format = 
              format.pval(p.value, eps = 0.001, nsmall = 2, digits = 2)
@@ -371,7 +371,7 @@ suppl2_reg_results_export <- suppl2_reg_results_tidy %>%
 
 # write.csv(
 #   suppl2_reg_results_export,
-#   paste0("results/SuppTable. Adj model results diff SES variables.csv_",
+#   paste0("results/SuppTable. Adj model results diff SES variables_",
 #   Sys.Date(), ".csv"
 #   )
 # )
