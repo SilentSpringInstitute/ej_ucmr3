@@ -5,7 +5,7 @@
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 # Start here:
-source("1_combine_process.R")
+# source("1_combine_process.R")
 
 library(corrplot)
 library(RColorBrewer)
@@ -120,7 +120,7 @@ library(RColorBrewer)
 plot.new()
 
 # save a file in the outputs folder
-png(file = paste0("outputs/", Sys.Date(), " - correlelogram.png"), 
+png(file = paste0("results/", Sys.Date(), " - correlelogram.png"), 
     width = 10, height = 7.5, units='in', res = 300)
 
 # set margins
