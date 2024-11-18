@@ -241,26 +241,59 @@ cn14 <- county14all
 
 # https://www.census.gov/library/publications/2019/acs/acs-40.html
 
-# Ignores the last few rows (footers).
+mdi_rate_2010 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 1)
+mdi_rate_2011 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 2)
+mdi_rate_2012 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 3)
+mdi_rate_2013 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 4)
+mdi_rate_2014 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 5)
+mdi_rate_2015 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 6)
+mdi_rate_2016 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 7)
+mdi_rate_2017 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 8)
 
-mdi <- read_xls("raw/county-level-mdi-rates-2017.xls", n_max = 3143) 
+colnames(mdi_rate_2010) <- c("county_id", "perc_deprived", "std_error")
 
-# Three counties did not have MDI rates published in this dataset (GEO.id2 = "10003", "35039", "42101"). 
-# For these counties, use NA instead of supplying a value. (Consider an alternative.)
-# In addition, all county IDs should have five digit codes. For IDs with 4 digits, 
-# add a leading zero. This chunk returns a warning message that can be ignored.
+mdi_rate_2010 %>% 
+  mutate(county_id = as.numeric(county_id), 
+         perc_deprived = as.numeric(perc_deprived), 
+         std_error = as.numeric(std_error)) %>% 
+  filter(!is.na(county_id)) %>%
+  nrow()
+# n = 3142
 
-mdi2 <- mdi %>% 
-  mutate(GEO.id2 = if_else(
-    nchar(county) == 4, 
-    paste0("0", county), 
-    as.character(county)
-    )) %>% 
-  mutate(mdi_rate = if_else(
-    GEO.id2 %in% c("10003", "35039", "42101"), 
-    as.numeric(NA), 
-    100*as.numeric(`MDI rate`)
-    )) 
+tidy_mdi_rate <- function(dat){
+  
+  colnames(dat) <- c("county_id", "perc_deprived", "std_error")
+  
+  dat <- dat %>% 
+    mutate(county_id = as.numeric(county_id), 
+           perc_deprived = as.numeric(perc_deprived), 
+           std_error = as.numeric(std_error)) %>% 
+    filter(!is.na(county_id))
+  
+  return(dat)
+}
+
+mdi_rate_2010 <- tidy_mdi_rate(mdi_rate_2010) %>% mutate(year="2010")
+mdi_rate_2011 <- tidy_mdi_rate(mdi_rate_2011) %>% mutate(year="2011")
+mdi_rate_2012 <- tidy_mdi_rate(mdi_rate_2012) %>% mutate(year="2012")
+mdi_rate_2013 <- tidy_mdi_rate(mdi_rate_2013) %>% mutate(year="2013")
+mdi_rate_2014 <- tidy_mdi_rate(mdi_rate_2014) %>% mutate(year="2014")
+
+mdi_rates <- bind_rows(mdi_rate_2010, 
+                       mdi_rate_2011, 
+                       mdi_rate_2012, 
+                       mdi_rate_2013, 
+                       mdi_rate_2014)
+
+mdi_rates <- mdi_rates %>% 
+  mutate(county_id = as.character(county_id)) %>%
+  mutate(county_id = if_else(nchar(county_id)==4,  paste0("0", county_id), county_id)) %>% 
+  select(-std_error)
+
+mdi_rates_use <- mdi_rates %>%
+  group_by(county_id) %>%
+  summarise(yr5_mdi_average = mean(perc_deprived)) %>%
+  rename(GEO.id2 = county_id)
 
 # Load 2010 urbanicity ---------------------------------------------------------
 
