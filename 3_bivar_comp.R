@@ -1,16 +1,16 @@
 # DATE STARTED: 2023-03-14
 # AUTHOR: Aaron Maruzzo
-# PURPOSE: Conduct t-tests and Exact tests
+# PURPOSE: Conduct t-tests for tables and figures
 # LATEST REVISION: 2024-11-12
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
+
+# start here: 
+# source("1_combine_process.R")
 
 library(tidyverse)
 library(ggplot2)
 library(broom)
 library(ggh4x)
-
-# start here: 
-source("1_combine_process.R")
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Overview ----------------------------------------------------------------
@@ -103,7 +103,7 @@ stopifnot(nrow(county_dat) == length(unique(county_dat$county_id)))
 # Check for missing data. 
 stopifnot(county_dat %>% filter(if_any(everything(), is.na)) %>% nrow() == 0)
 
-# How many counties were matched to a UCMR 3 PWS overall? 1718 counties. 
+# How many counties were matched to a UCMR 3 PWS overall? 1720 counties. 
 nrow(county_dat)
 
 # Create a new single column variable indicating whether either an MFTA facility, 
@@ -174,7 +174,7 @@ county_results
 
 # Save progress.
 
-# write.csv(county_res, paste0("results/Suppl. Mean demos and TRI facs.csv"))
+# write.csv(county_results, paste0("results/Suppl. Mean demos and TRI facs.csv"))
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Figure 1 ----------------------------------------------------------------
@@ -223,8 +223,10 @@ ggplot(county_ready2plot %>% filter(!is.na(y)),
             size = 2) + 
   facet_grid(y ~ x, switch = "both",  labeller = label_wrap_gen(15), scales = "free_y")  + 
   facetted_pos_scales(y = list(
-    y %in% c("Percent Hispanic", "Percent non-Hispanic Black", "Percent deprived") ~ 
+    y %in% c("Percent Hispanic", "Percent non-Hispanic Black") ~ 
       scale_y_continuous(expand = c(0,0), limits = c(0, 25)), 
+    y == "Percent deprived" ~ 
+      scale_y_continuous(expand = c(0,0), limits = c(0, 35)),
     y == "Percent urban" ~ 
       scale_y_continuous(expand = c(0,0), limits = c(0,110))
   )) + 
@@ -278,7 +280,7 @@ demo_pws_data <- dat_clean %>%
                values_to = "demo_value") 
 
 # Check: 4808 systems * 7 demographic variables
-stopifnot(nrow(demo_pws_data)==4808*7)
+stopifnot(nrow(demo_pws_data)==4815*7)
 
 # str(demo_pws_data)
 
@@ -321,7 +323,7 @@ demo_pws_summary
 
 # Save progress.
 
-# write.csv(demo_pws_summary, paste0("results/", Sys.Date()," Mean demographic levels by PWS outcomes.csv"))
+write.csv(demo_pws_summary, paste0("results/", Sys.Date()," Mean demographic levels by PWS outcomes.csv"))
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Figure 2 ----------------------------------------------------------------
