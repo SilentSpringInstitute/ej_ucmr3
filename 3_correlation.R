@@ -61,6 +61,8 @@ primaryCols <- c("perc_hisp_any", "perc_black_nohisp", "mdi_rate",  "perc_urban"
 # In data frame object "dat_clean", there are three levels of system type:
 # GW, SW, or MIX. Pivot these wider and create binary variables (1s/0s). 
 
+stopifnot(nrow(dat_clean)==4815)
+
 dat_short <- dat_clean %>% 
   select(PWSID, all_of(primaryCols)) %>%
   mutate(value = 1) %>%
