@@ -237,7 +237,7 @@ county14all <- left_join(county14eco, county14soc) %>%
 
 cn14 <- county14all 
 
-# Load 2017 multiple deprivation index (MDI) ----------------------------------------
+# Load multiple deprivation index (MDI) ----------------------------------------
 
 # https://www.census.gov/library/publications/2019/acs/acs-40.html
 
@@ -246,9 +246,9 @@ mdi_rate_2011 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 2)
 mdi_rate_2012 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 3)
 mdi_rate_2013 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 4)
 mdi_rate_2014 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 5)
-mdi_rate_2015 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 6)
-mdi_rate_2016 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 7)
-mdi_rate_2017 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 8)
+# mdi_rate_2015 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 6)
+# mdi_rate_2016 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 7)
+# mdi_rate_2017 <- read_excel("raw/county_mdi_rates_2010_2019.xls", sheet = 8)
 
 colnames(mdi_rate_2010) <- c("county_id", "perc_deprived", "std_error")
 
