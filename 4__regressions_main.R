@@ -5,7 +5,7 @@
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 # Start here:
-source("1_combine_process.R")
+# source("1_combine_process.R")
 
 # for regression:
 library(lme4)             # glmer() 
@@ -269,7 +269,7 @@ crude_results_tidy
 
 crude_results_export <- crude_results_tidy %>%
   pivot_wider(id_cols = c(pred, term), 
-              names_from = c(outcome_name),
+              names_from = c(name),
               values_from = c(estimate_edit, 
                               p_format, 
                               p_star),
@@ -291,8 +291,8 @@ crude_results_export <- crude_results_tidy %>%
 crude_results_export
 
 ### SAVE OUTPUTS HERE:
-# write.csv(crude_results_export, 
-#           paste0("results/Table 3. Crude Results_", 
+# write.csv(crude_results_export,
+#           paste0("results/Table 3. Crude Results_",
 #                  Sys.Date(), ".csv"))
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
