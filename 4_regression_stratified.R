@@ -5,7 +5,7 @@
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 # Start here:
-source("1_combine_process.R")
+# source("1_combine_process.R")
 
 # for regression:
 library(lme4)             # glmer() 
@@ -133,7 +133,7 @@ TableOrder3 <-   c("perc_hisp_any",
 
 stratified_results3 <- stratified_results2 %>%
   select(outcome_name, size, term, n, estimate_edit, p_format, p_star) %>%
-  mutate(term = factor(term, levels = TableOrder_vec2)) %>%
+  mutate(term = factor(term, levels = TableOrder3)) %>%
   arrange(term)
 
 stratified_results_export <- stratified_results3 %>%
@@ -147,11 +147,11 @@ stratified_results_export <- stratified_results3 %>%
   ) 
 
 # Save progress. 
-# 
+
 # write.csv(
 #   stratified_results_export,
 #   paste0(
-#     "results/Table 5. Size Stratified Adjusted Logistic Results_",
+#     "results/Size Stratified Adjusted Logistic Results_",
 #     Sys.Date(),
 #     ".csv"
 #   )
