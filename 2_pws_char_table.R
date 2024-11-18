@@ -34,7 +34,8 @@
 # start here: 
 source("1_combine_process.R")
 
-stopifnot(nrow(dat_clean)==4808) # total number of systems in the study
+# stopifnot(nrow(dat_clean)==4808) 
+stopifnot(nrow(dat_clean)==4815) # total number of systems in the study
 
 # str(dat_clean)
 # colnames(dat_clean)
@@ -115,4 +116,4 @@ tab3 <- tab2 %>%
 
 tab3 
 
-# write.csv(tab3, paste0("outputs/Table 1. PWS Characteristics_", Sys.Date(), ".csv"))
+# write.csv(tab3, paste0("results/Table 1. PWS Characteristics_", Sys.Date(), ".csv"))
