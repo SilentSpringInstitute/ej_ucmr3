@@ -5,7 +5,7 @@
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 # start here: 
-source("1_combine_process.R")
+# source("1_combine_process.R")
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # US tribes and US territories
@@ -26,6 +26,7 @@ source("1_combine_process.R")
 # removing systems with missing data. 
 
 str(dat_ucmr3)
+stopifnot(nrow(dat_ucmr3)==4923)
 
 # Count the number of systems in tribes and territories overall. Check  if 
 # all these systems collected samples for target contaminants.
@@ -48,11 +49,14 @@ dat_tt3 <- dat_tt2 %>%
   pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
                names_to = "outcome", values_to = "value")
 
+stopifnot(nrow(dat_tt3) == nrow(dat_tt2)*6)
+
 # Detection frequencies  -----------------------------------------------------
 
-## contamination-specific frequencies among tribal PWSs (n=29) and territorial 
-## PWSs (n=76). Frequencies were calculated for systems separated by whether 
-## they were in a tribal area or U.S. territory, and combined. 
+# Calculate the number of systems in US tribes and territories that detected 
+# a target contaminant. Repeat for all six outcomes. Use bind_row() to create 
+# an "overall" category, which combined US tribes and territories. 
+
 det_freq_tt <- dat_tt3 %>% 
   bind_rows(dat_tt3 %>% mutate(state_status = "overall")) %>% 
   group_by(state_status, outcome) %>% 
@@ -60,7 +64,10 @@ det_freq_tt <- dat_tt3 %>%
             detect = sum(value == 1),
             det_freq = 100*detect/n())
 
-## contamination-specific frequencies among PWSs in the main analysis (n=4808).
+# Calculate the number of systems in the U.S. and D.C. that detected a 
+# target contaminant. Repeat for all six outcomes. 
+# Note: should be the same frequencies reported in Table 1.
+
 det_freq_main <- dat_clean %>% 
   pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
                names_to = "outcome", values_to = "value") %>% 
@@ -70,53 +77,26 @@ det_freq_main <- dat_clean %>%
             detect = sum(value == 1, na.rm = T),
             det_freq = 100*detect/n())
 
-## combine datasets 
+# Combine the detection frequency tables.
+
 det_freq_maintt <- bind_rows(det_freq_main, det_freq_tt)
-det_freq_maintt %>% pivot_wider(id_cols = c(state_status, n), 
-                                names_from = outcome, values_from = det_freq)
 
-
-## detection freqs of target contaminants among territories/tribal systems
-# tribal OR territory combined
-t2 <- dat_tt2 %>% 
-  pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
-               names_to = "outcome", values_to = "value") %>% 
-  group_by(outcome) %>% 
-  summarise(n = sum(!is.na(value)),  # NA = system did not sample for contaminant
-            yes = sum(value == 1, na.rm = T),
-            det_freq = round(100*sum(value == 1, na.rm = T)/n, 1)) %>%
-  mutate(state_status = "Tribal or Territorial PWS")
-
-
-# make a dataset that has the main US-based water systems sample, and the 
-# tribal/territorial water systems
+# For statistical tests (Exact tests), create a data frame object that 
+# has all US PWSs. This is exactly the same as dat_ucmr3.
 
 dat_tt_withUS <- dat_clean %>% 
   bind_rows(dat_tt) %>%
   mutate(state_status_2 = ifelse(state_status %in% c("tribe", "territory"), 
                                  "TT", "US"))
-dat_tt_withUS
 
-nrow(dat_tt_withUS) #4913 (U.S. PWSs + excluded systems)
-dat_clean %>% bind_rows(dat_tt) %>% group_by(state_status) %>% count()
-# 4808 states, 76 territories, 29 tribes
+setdiff(dat_ucmr3, dat_tt_withUS %>% select(-state_status_2))
+table(dat_tt_withUS$state_status_2)
 
-dat_clean %>% bind_rows(dat_tt) %>% group_by(state_status) %>% count() %>%
-  ungroup() %>% mutate(N = sum(n), freq = 100*n/N)
+# Conduct Fisher's Exact tests. Test for differences in detection frequencies 
+# between US (main) systems versus excluded systems (tribes and territories). 
+# Alpha = 0.05. n1=4815 and n2=108.
 
-dat_clean %>% bind_rows(dat_tt) %>% 
-  filter(det_any == 1) %>% 
-  group_by(state_status) %>% count() %>%
-  ungroup() %>% mutate(N = sum(n), freq = 100*n/N)
-
-dat_clean %>% bind_rows(dat_tt) %>% 
-  filter(det_diox == 1) %>% 
-  group_by(state_status) %>% count() %>%
-  ungroup() %>% mutate(N = sum(n), freq = 100*n/N)
-
-# conduct Fisher's Exact test for each outcome
-# comparison is frequencies of detections TT (tribal or territory PWS) vs. US (other PWS) 
-temp <- dat_tt_withUS %>%
+exact_results <- dat_tt_withUS %>%
   pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
                names_to = "outcome", values_to = "value") %>% 
   group_by(outcome) %>% 
@@ -126,25 +106,38 @@ temp <- dat_tt_withUS %>%
          test = map(test, ~tidy(.))) %>% 
   unnest(test)
 
-T4 <- bind_rows(t1, t3) %>% 
-  left_join(temp %>% distinct(outcome, p.value)
-  ) %>%
-  mutate(p.value = ifelse(p.value < 0.001, "< 0.001", as.character(signif(p.value, 2)))) %>%
-  relocate(state_status, .after = outcome) %>%
-  arrange(outcome, state_status) %>%
-  mutate(yes = paste0(yes, " (", det_freq, ")"), 
-         state_status = paste0(state_status, " (n = ", n, ")")) %>%
-  select(-det_freq, -n) 
-T4
+# view results here:
+# exact_results %>% select(-data, -contTabl) %>% view()
+
+# Extract p-values for table. Format p-values, then combine with combined 
+# detection frequency table. Sort by outcome first, then by area. Export.
+
+exact_results2 <- exact_results %>% 
+  select(outcome, p.value) %>% 
+  mutate(p.value = format.pval(p.value, 
+                               digits = 1, 
+                               eps = 0.001, 
+                               nsmall =2))
+
+exact_results3 <- det_freq_maintt %>% 
+  left_join(exact_results2, by = 'outcome') %>%
+  filter(state_status != "overall") %>%
+  relocate(outcome, 1) %>%
+  arrange(outcome, state_status)
 
 # Save progress.
 
-# write.csv(T4, paste0("outputs/", Sys.Date(), " - comparing TT vs US systems.csv"))
+# write.csv(exact_results3,
+#           paste0("results/SuppTable. DFs bw US tribes, territories, and mainland US_",
+#                  Sys.Date(), ".csv"))
 
 
-# Disproportionality  -----------------------------------------------------
+# Over-representation analysis -------------------------------------------------
 
-# Over-representation analysis 
+# Over-representation analysis looks at the proportion of water systems in US tribes and 
+# territories among the overall population (UCMR3 systems) and compares
+# them to the proportion of systems in US tribes/territories among 
+# systems that detected an unregulated contaminant.
 
 # function 
 make_clean_value <- function(n, freq){paste0(n, " (", freq, ")")}
@@ -183,8 +176,9 @@ comb_overrepresentn <- overall_UCMR %>%
   relocate(overall_prevalence, .after = state_status)
 comb_overrepresentn
 
-# write.csv(comb_overrepresentn, 
-#           paste0("outputs/", Sys.Date(), " - overrepresentation TT vs US systems.csv"))
+# write.csv(comb_overrepresentn,
+#           paste0("results/SuppTable. Overrepresentation_", 
+#                  Sys.Date(), ".csv"))
 
 
 # Archive -----------------------------------------------------------------
