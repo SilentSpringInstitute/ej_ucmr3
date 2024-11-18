@@ -174,7 +174,7 @@ county_results
 
 # Save progress.
 
-# write.csv(county_results, paste0("results/Suppl. Mean demos and TRI facs_", 
+# write.csv(county_results, paste0("results/SuppTable. Mean demos and TRI facs_",
 #                                  Sys.Date(), ".csv"))
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
