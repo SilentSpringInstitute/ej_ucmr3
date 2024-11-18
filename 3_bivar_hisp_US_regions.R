@@ -5,7 +5,7 @@
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 # start here: 
-source("1_combine_process.R")
+# source("1_combine_process.R")
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #  Overview
@@ -20,6 +20,12 @@ source("1_combine_process.R")
 
 state_region_df <- data.frame(state = state.abb, region = state.region)
 state_region_df
+
+# Add DC systems as South
+
+rowDC <- tibble(state = "DC", region = "South")
+
+state_region_df <- bind_rows(state_region_df, rowDC)
 
 dat_clean %>%
   left_join(state_region_df) %>%
@@ -61,13 +67,15 @@ dat_clean %>%
   group_by(region) %>%
   summarise(n = n(), 
             n_present_any = sum(n_fac_any == 1), 
-            freq = 100*n_present_any/n, 
+            freq = round(100*n_present_any/n, 0),
             freq_MIX = 100*sum(pws_type == "MX")/n,
-            mean_black = mean(perc_black_nohisp),
+            # mean_black = mean(perc_black_nohisp),
             median_black = median(perc_black_nohisp),
+            median_black = round(median_black, 0),
             median_hisp = median(perc_hisp_any),
             median_urban = median(perc_urban),
-            mean_wwtp = mean(adj_wwtp_flow))
+            mean_wwtp = round(mean(adj_wwtp_flow),2)
+            )
 
 
 # Archive -----------------------------------------------------------------
