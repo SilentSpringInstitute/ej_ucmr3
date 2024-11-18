@@ -30,12 +30,12 @@ Scripts compile downloaded datasets of results from the Third Unregulated Contam
 
  - Series 2: scripts of univariate analyses
 
-Scripts include code used to calculate detection frequencies (Table 1) and characterize baseline characteristics of water systems. (Table 2) The analysis on US tribes and territories is also is in this series.
+Scripts include code used to calculate detection frequencies (Table 1) and characterize baseline characteristics of water systems (Table 2). Script 2_pws_compare_SDWIS compared the distribution of large and small systems in the UCMR3 with SDWIS systems (Table S1). The analysis on US tribes and territories (Table S10-S11) is also is in this series.
 
  - Series 3: bivariate analyses. 
 
-Scripts include code used to compare the average demographic measures between counties with and without point sources (Figures 2) and average demographic measures between systems with and without detections (Figure 3). Script 3_correlation.R determined correlations between covariates used in regression models.
+Scripts include code used to compare the average demographic measures between counties with and without point sources (Figures 2) and average demographic measures between systems with and without detections (Figure 3). Script 3_bivar_hisp_US_regions.R preliminarily assessed differences in demographics and point sources by US regions (mentioned in discussion). Script 3_correlation.R determined correlations between covariates used in regression models (Figure S1).
 
  - Series 4: multivariate (regression) analyses.
 
-Scripts include Tables 3 and 4 in the paper, which aim to estimate associations between the presence of unregulated contaminants and sociodemographic variables, PWS characteristics, and suspected sources. Supplemental regressions and a marginal analysis were also part of the series.
+Scripts estimated associations between the presence of unregulated contaminants and sociodemographic variables, PWS characteristics, and suspected sources with logistic regressions (Table 3 [crude], Table 4 [adjusted]). Supplemental regressions and a marginal analysis were also part of the series.
