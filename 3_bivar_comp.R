@@ -325,8 +325,8 @@ demo_pws_summary
 
 # Save progress.
 
-# write.csv(demo_pws_summary, paste0("results/Mean demographic levels by PWS outcomes_",
-#                                    Sys.Date(), 
+# write.csv(demo_pws_summary, paste0("results/SuppTable. Mean demographic levels by PWS outcomes_",
+#                                    Sys.Date(),
 #                                    ".csv"))
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -455,9 +455,9 @@ ggplot(demo_pws_data_ready2plot,
         strip.placement = 'outside', 
         strip.background = element_rect(fill = 'white', color = 'white'), 
         strip.text.y.left = element_text(size = 10))
-      
+
 # ggsave(plot = last_plot(),
-#        paste0("results/Fig 2. Compare average demographics between water systems_", 
+#        paste0("results/Figure 2. Compare average demographics between water systems_",
 #               Sys.Date(), ".pdf"),
 #        scale = 1.3,
 #        height = 5,
