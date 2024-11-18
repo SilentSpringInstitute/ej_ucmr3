@@ -20,7 +20,7 @@
 # in the UCMR3 and systems overall. Original files are available upon request. 
 
 # start here: 
-source("1_combine_process.R")
+# source("1_combine_process.R")
 
 # Load SDWIS data ---------------------------------------------------------
 
@@ -67,61 +67,60 @@ sdwis <- sdwis2013_clean %>%
 # 10,000 customers. 
 
 sdwis1 <- sdwis %>%
+  filter(pws_id %in% dat_clean$PWSID) %>%
   left_join(dat_clean %>% 
               select(PWSID, size), by = c("pws_id"="PWSID"))
 
-sdwis2 <- sdwis1 %>%
+sdwis2 <- sdwis %>%
   mutate(size = case_when(
-    !is.na(size) ~ size, 
-    is.na(size) & population_served_count > 10000 ~ "L", 
-    is.na(size) & population_served_count <= 10000 ~ "S", 
+    population_served_count > 10000 ~ "L", 
+    population_served_count <= 10000 ~ "S", 
     TRUE ~ "oops"
   ))
+
+stopifnot(nrow(filter(sdwis2, size=='oops'))==0)
 
 # Count -------------------------------------------------------------------
 
 # Calculate total number of systems in SDWIS and UCMR3. The UCMR3 total must 
 # be the same as in the paper (n=4808).
 
-tot1 <- sdwis2 %>%
-  summarise(n_sdwis = n(), 
+tot1 <- sdwis1 %>%
+  summarise(n_ucmr3 = n(), 
             size = "total", pws_type = "total")
 
 tot2 <- sdwis2 %>% 
-  filter(pws_id %in% dat_clean$PWSID) %>%
-  summarise(n_ucmr3 = n(), 
+  summarise(n_sdwis = n(), 
             size = "total", pws_type = "total")
 
 tot3 <- tot1 %>% left_join(tot2)
 
 # Calculate number of systems stratified by size and PWS type.
 
-sdwis3 <- sdwis2 %>%
-  group_by(size, pws_type) %>%
-  summarise(n_sdwis = n())
-
-sdwis4 <- sdwis2 %>%
-  filter(pws_id %in% dat_clean$PWSID) %>%
+sdwis3 <- sdwis1 %>%
   group_by(size, pws_type) %>%
   summarise(n_ucmr3 = n())
 
-tab <- sdwis4 %>% right_join(sdwis3) %>% arrange(size)
+sdwis4 <- sdwis2 %>%
+  group_by(size, pws_type) %>%
+  summarise(n_sdwis = n())
+
+tab <- sdwis4 %>% left_join(sdwis3) %>% arrange(size)
 tab1 <- tab %>% mutate(n_ucmr3 = replace_na(n_ucmr3, 0))
 
 tab1
 
 # Calculate number of systems stratified by PWS type only.
 
-sdwis5 <- sdwis2 %>%
-  group_by(pws_type) %>%
-  summarise(n_sdwis = n())
-
-sdwis6 <- sdwis2 %>%
-  filter(pws_id %in% dat_clean$PWSID) %>%
+sdwis5 <- sdwis1 %>%
   group_by(pws_type) %>%
   summarise(n_ucmr3 = n())
 
-tab2 <- sdwis6 %>% right_join(sdwis5)
+sdwis6 <- sdwis2 %>%
+  group_by(pws_type) %>%
+  summarise(n_sdwis = n())
+
+tab2 <- sdwis6 %>% left_join(sdwis5)
 tab3 <- tab2 %>% mutate(n_ucmr3 = replace_na(n_ucmr3, 0))
 tab3 <- tab3 %>% mutate(size = "overall")
 
@@ -129,7 +128,7 @@ tab3 <- tab3 %>% mutate(size = "overall")
 
 tab4 <- bind_rows(tab1, tab3, tot3)
 
-# write.csv(tab4, 
+# write.csv(tab4,
 #           "results/Suppl Table. Num of systems in SDWIS versus UCMR3 study.csv")
 
 # Archive -----------------------------------------------------------------
