@@ -9,7 +9,7 @@ library(margins)
 library(lme4)
 
 # create main datasets
-source("2. create main datasets.R")
+# source("2. create main datasets.R")
 
 # Estimating marginal effects (Jahred's method) ----
 
@@ -46,15 +46,15 @@ broom.mixed::tidy(mod_jl, conf.level = 0.95, conf.int = TRUE)
 
 coef <- summary(mod_jl)$coefficients[[2]] 
 coef
-# 0.00333653
+# 0.002993953
 
 ## Estimating effects
 coef * (max_hisp - min_hisp)
-# 0.319306 = 31.9% increase in probability over the range
+# 0.2865213 = 29% increase over the range of % Hisp
 coef * (as.numeric(q3_hisp - q1_hisp))
-# 0.05113233 = 5.1% increase over the one IQR
+# 0.04565778 = 5% increase over the one IQR
 coef * (sd_hisp)
-# 0.05186385 = 5.2% increase
+# 0.0465079 = 5% increase over one-standard dev
 
 ## Note- estimating marginal effects for a continuous variable is the same 
 ## as calculating the average of probability differences between counterfactuals.
@@ -88,16 +88,15 @@ summod
 # mean effect coefficient
 ave_effect <- summod$AME[summod$factor=="perc_hisp_any"] 
 ave_effect
-#0.00344706
+#0.003190683 
 
 # estimating over specific ranges
 ave_effect * (max_hisp - min_hisp) * 100
-# 32.98836  
+# 30.53484   
 ave_effect * (as.numeric(q3_hisp - q1_hisp)) * 100
-# 5.282619 
+# 4.865791  
 ave_effect * (sd_hisp) * 100
-# 5.358195 
-round(5.358195, 1)
+# 4.95639  
 
 # Archive (do not run) ----
 
