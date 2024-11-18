@@ -122,7 +122,7 @@ library(RColorBrewer)
 plot.new()
 
 # save a file in the outputs folder
-png(file = paste0("results/", Sys.Date(), " - correlelogram.png"), 
+png(file = paste0("results/Correlations plot_", Sys.Date(), ".png"), 
     width = 10, height = 7.5, units='in', res = 300)
 
 # set margins
