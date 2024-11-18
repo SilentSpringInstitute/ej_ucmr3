@@ -292,7 +292,7 @@ mdi_rates <- mdi_rates %>%
 
 mdi_rates_use <- mdi_rates %>%
   group_by(county_id) %>%
-  summarise(yr5_mdi_average = mean(perc_deprived)) %>%
+  summarise(mdi_rate = mean(perc_deprived)) %>%
   rename(GEO.id2 = county_id)
 
 # Load 2010 urbanicity ---------------------------------------------------------
@@ -659,7 +659,7 @@ fips_check1.1 <- fips_check1 %>% distinct(PWSID, State) # 122 systems do not hav
 # Combine all datasets ---------------------------------------------------------
 
 cn14.1 <- cn14 %>%
-  left_join(mdi2) %>%
+  left_join(mdi_rates_use) %>%
   left_join(cnurban3) %>%
   left_join(src_wwtp4) %>% 
   left_join(src_epa2) %>% 
@@ -669,8 +669,10 @@ cn14.1 <- cn14 %>%
   left_join(landarea2)
 
 cn14.2  <- cn14.1 %>%
-  select(-`Standard Error`, -`MDI rate`, -GEO.id, 
-         -county) %>%
+  # select(-`Standard Error`, 
+  #        -`MDI rate`,
+  #        -GEO.id, 
+  #        -county) %>%
   mutate_at(vars(matches("src_|bin_|n_")), 
             ~ifelse(is.na(.), 0, .)) 
 
