@@ -104,7 +104,7 @@ tab
 
 # Save table (with additional formatting in MS word/excel).
 
-# write.csv(tab, paste0("outputs/Table 2. DetFreq by Sys and Samps_", Sys.Date(), ".csv"))
+# write.csv(tab, paste0("results/Table 2. DetFreq by Sys and Samps_", Sys.Date(), ".csv"))
 
 # Archive -----------------------------------------------------------------
 
