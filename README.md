@@ -16,9 +16,26 @@ Libraries used
   * broom.mixed
   * margins
 
-Scripts in this repo are grouped and intended to run in order. Outputs were saved in a folder ("outputs/") created in a local directory. 
+Scripts in this repo were grouped into series and intended to run in order (series 1->4). 
 
- - Series 1: processing scripts. Compiles downloaded datasets of results from the Third Unregulated Contaminant Monitoring Rule (2013-2015), county-level information from U.S. Census Bureau and American Community Surveys, and suspected sources of unregulated contaminants including wastewater and facilities reporting emissions to the Toxics Release Inventory (TRI). Script "1_combine_process.R" is sourced in every other series. This script links and processes various data into a single data frame of 4808 US water systems, a summary of their sample results, and the profile of the county they serve.
- - Series 2: univariate analyses. Scripts in this series include short scripts used to create Table 1 (detection frequencies) and Table 2 (baseline characteristics) of water systems. 
- - Series 3: bivariate analyses. Scripts in this series produce Figures 2 and 3 in the paper, and calculates correlations between covariates used in regression models in series 4.
- - Series 4: multivariate (regression) analyses. Scripts in this series produce Tables 3 and 4 in the paper, which aim to estimate associations between the presence of unregulated contaminants and sociodemographic variables, PWS characteristics, and suspected sources. 
+Outputs were saved in a folder ("results/") created in a local directory. 
+
+**Note: "1_combine_process.R" creates a data frame object called "dat_clean" that is used in subsequent series (2-4). "dat_clean" consists of 4815 rows (total number of water systems) and columns corresponding to their summary results (eg, "det_pfas", 1/0) and a summary profile of the county (or counties) they serve. 
+
+"1_combine_process.R" must be sourced in series 2-4.
+
+ - Series 1: processing scripts 
+
+Scripts compile downloaded datasets of results from the Third Unregulated Contaminant Monitoring Rule (2013-2015), county-level information from U.S. Census Bureau and American Community Surveys, and suspected sources of unregulated contaminants including wastewater and facilities reporting emissions to the Toxics Release Inventory (TRI). 
+
+ - Series 2: scripts of univariate analyses
+
+Scripts include code used to calculate detection frequencies (Table 1) and characterize baseline characteristics of water systems. (Table 2) The analysis on US tribes and territories is also is in this series.
+
+ - Series 3: bivariate analyses. 
+
+Scripts include code used to compare the average demographic measures between counties with and without point sources (Figures 2) and average demographic measures between systems with and without detections (Figure 3). Script 3_correlation.R determined correlations between covariates used in regression models.
+
+ - Series 4: multivariate (regression) analyses.
+
+Scripts include Tables 3 and 4 in the paper, which aim to estimate associations between the presence of unregulated contaminants and sociodemographic variables, PWS characteristics, and suspected sources. Supplemental regressions and a marginal analysis were also part of the series.
