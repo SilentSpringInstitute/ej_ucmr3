@@ -5,7 +5,7 @@
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 # start here: 
-# source("1_combine_process.R")
+source("1_combine_process.R")
 
 library(tidyverse)
 library(ggplot2)
@@ -105,6 +105,15 @@ stopifnot(county_dat %>% filter(if_any(everything(), is.na)) %>% nrow() == 0)
 
 # How many counties were matched to a UCMR 3 PWS overall? 1720 counties. 
 nrow(county_dat)
+county_dat %>%
+  group_by(n_fac_any > 0) %>%
+  summarise(n=n(), 
+            mean(perc_hisp_any))
+
+county_dat %>%
+  summarise(n=n(), mean=mean(perc_hisp_any))
+
+colnames(county_dat)
 
 # Create a new single column variable indicating whether either an MFTA facility, 
 # AFFF-certified airport, or an EPA stewardship facility was present in the 
@@ -281,7 +290,7 @@ demo_pws_data <- dat_clean %>%
                names_to = "demo_variable", 
                values_to = "demo_value") 
 
-# Check: 4808 systems * 7 demographic variables
+# Check: 4815 systems * 7 demographic variables
 stopifnot(nrow(demo_pws_data)==4815*7)
 
 # str(demo_pws_data)
