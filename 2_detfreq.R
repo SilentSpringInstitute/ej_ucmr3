@@ -1,6 +1,6 @@
 # DATE STARTED: 2021-07-06
 # AUTHOR: Amanda Hernandez, Jahred Liddie
-# PURPOSE: Calculate sample- and system-level detection frequencies (Table 1 in paper)
+# PURPOSE: Find DFs for total samples and total systems (Table 1)
 # LATEST REVISION: 2024-11-12
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
@@ -8,37 +8,39 @@
 # TABLE 1. Reporting limits, detection freq, and common sources ----------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# Start here:
+# Start here (if not already run; left un-commented to source this script independently):
 source("1_combine_process.R")
 
-# The script above downloads the UCMR3 dataset and defines outcome 
-# variables (detection and exceedance) for each water system and target 
-# contaminant separately. It sources the script that loads the original 
+# The script above downloads the UCMR3 dataset and identifies water systems 
+# that meet the six criteria as dichotomous outcomes. It sources the script that loads the original 
 # UCMR3 dataset into the working environment (1__ucmr3_process.R), among 
 # other datasets.
 
 allContams <- c("1,4-dioxane", "1,1-dichloroethane", "HCFC-22", "PFOA",
-                "PFOS", "PFHpA", "PFHxS", "PFNA", "PFBS", "Any PFAS detected")
+                "PFOS", "PFHpA", "PFHxS", "PFNA", "PFBS", "Any PFAS")
 
 PFASonly <- c("PFOA", "PFOS", "PFHpA", "PFHxS", "PFNA", "PFBS")
 
 PWSID_included <- dat_clean$PWSID
 
 # Use the following datasets (stored in working environment) from the sourced
-# script to calculate detection frequencies: ucmr3.0 and ucmr3.2.
+# script to calculate detection frequencies
 
-stopifnot(length(unique(ucmr3.0$PWSID))==4923) # total # of sys in List 1 monitoring
-stopifnot(length(unique(ucmr3.2$PWSID))==4920) # total # of sys w/ PFAS samples
-stopifnot(length(unique(ucmr3.2$exceed)) == 2) # ucmr3.2 has one additional column "exceed" (binary).
+# data source: 1___ucmr3_process.R
+# total # of sys in List 1 monitoring
+stopifnot(length(unique(ucmr3.0$PWSID))==4923) 
+# total # of sys w/ PFAS samples
+stopifnot(length(unique(ucmr3.2$PWSID))==4920) 
+# ucmr3.2 has one additional column compared to ucmr3.0. Col="exceed"
+setdiff(colnames(ucmr3.2), colnames(ucmr3.0))  
 
-# The following chunk is needed to create "new" rows in the UCMR data whereby 
-# the "Contaminant" is "Any PFAS detected."
-# "Any PFAS detected" is defined as one or more detection of a chem in PFASonly 
-# (ie, PFOA, PFOS, PFHpA, PFHxS, PFNA, PFBS). The chunk below creates a 
-# dataset of all samples from the UCMR3 and creates columns of: (1) the total 
-# amount of PFAS (simple sum), (2) a binary var whether the sample 
-# exceeded 70 ppt for the combined amount of PFOA and PFOS, and (3) a 
-# column name of "Any PFAS detected."
+# The following chunk is needed to create "new" rows in the UCMR data in which 
+# the "Contaminant" is coded as any of the six PFAS tested ("Any PFAS")
+# The code below creates a dataset of samples from the UCMR3. For each 
+# sample (defined in group by), there were three main columns: 
+# (1) the total amount of PFAS (simple sum, excluding NAs), 
+# (2) where the sample was >=70 ppt for the combined amount of PFOA and PFOS, and
+# (3) a column name of "Any PFAS"
 
 new_rows_any_pfas <- ucmr3.0 %>%
   filter(Contaminant %in% PFASonly) %>%
@@ -49,7 +51,7 @@ new_rows_any_pfas <- ucmr3.0 %>%
                                 na.rm = T),
             AnalyticalResultValue = sum(AnalyticalResultValue, na.rm = T),
             exceed = ifelse(sum_pfoa_pfos >= 0.07, 1, 0),
-            Contaminant = "Any PFAS detected") 
+            Contaminant = "Any PFAS") 
 
 # Detection frequency. Denominator: total number of samples collected for each 
 # contaminant. 
@@ -102,7 +104,7 @@ col2 <- pws_det_freq %>% rename(n_pws = n)
 tab <- col1 %>% left_join(col2, by = "Contaminant")
 tab
 
-# Save table (with additional formatting in MS word/excel).
+# Save table.
 
 # write.csv(tab, paste0("results/Table 2. DetFreq by Sys and Samps_", Sys.Date(), ".csv"))
 
@@ -120,7 +122,7 @@ tab
 # ucmr3.0 %>%
 #   filter(Contaminant %in% PFASonly) %>%
 #   group_by(PWSID) %>%
-#   summarise(Contaminant = "Any PFAS detected", 
+#   summarise(Contaminant = "Any PFAS", 
 #             sum_pfoa_pfos = sum(AnalyticalResultValue[Contaminant %in% c("PFOA", "PFOS")], 
 #                                 na.rm = T)) %>%
 #   arrange(-sum_pfoa_pfos)
