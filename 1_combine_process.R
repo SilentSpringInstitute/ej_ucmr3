@@ -1,6 +1,7 @@
 # DATE STARTED: 2021-06-20
 # AUTHOR: Amanda Hernandez
-# PURPOSE: Merge county-level data with water systems and aggregate to summarize variables per water system ID
+# PURPOSE: Merge demographics (etc.) with water systems, and 
+#          summarize variables per water system
 # LATEST REVISION: 2024-10-02 
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
@@ -11,7 +12,7 @@ library(tidyverse)
 # setwd(workingdir)
 # getwd()
 
-# start here:
+# start here (leave uncommented to source in later scripts):
 source("1__ucmr3_process.R")
 source("1__demo_process.R")
 
@@ -20,18 +21,20 @@ source("1__demo_process.R")
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 
 # This script combines the outputs of 1__ucmr3_process.R and 1__demo_process.R
-# and creates a data set to use for all subsequent scripts. The first script
-# used the UCMR3 data to define outcome variables. The second script 
-# used various public data on information about customers served by US water 
-# systems. In particular, the demographic processing script loads and processes
+# and creates a data set to use for all subsequent scripts in this repo.
+# 
+# The first script (1__ucmr3_process.R) used the UCMR3 data to define outcome variables. 
+# The second script used various public data on information about customers served by US water 
+# systems. Specifically, the demographic processing script loads and processes
 # county-level information about demographics like ethnicity (e.g., the percent of Hispanic 
 # residents in a county according to estimates from the 2010-2014 ACS survey).
 #
+# For PWS serving multiple counties, this script computes a population-weighted 
+# average of demographic variables of interest (e.g., % Hispanic). 
+#
 # The end result of this script is "dat_clean," which is used throughout the repo. 
 # It is a dataset of UCMR3 water systems with columns linking them to information 
-# about county or counties served. Each row in dat_clean is one PWS. For PWS 
-# that serve multiple counties, this script computes a population-weighted 
-# average of demographic variables of interest (e.g., % Hispanic). 
+# about county or counties served. Each row in dat_clean is one PWS. 
 
 # Function --------------------------------------------------
 
@@ -62,7 +65,7 @@ fips_cn15 <- fips %>% left_join(cn15, relationship = "many-to-many")
 # AHz in 1__demo_process.R.
 # fips_cn15 %>% count(PWSID, GEO.id2) %>% filter(n > 1) # n=2 systems
 
-# Finish processing demographics and wastewater flow ------------
+# Population-weighted demographics and wastewater flow ------------
 
 # For each system-county pair, calculate % homeownership as the proportion of residents who own a home. 
 # Also calculate the amount of wastewater flow in MGD/km2. Note that 
@@ -93,7 +96,7 @@ fips_cn15.2 <- fips_cn15.1 %>%
 
 # PWS chars from EPA SDWIS (e.g., population served) ---------------
 
-# Collect some information from SDWIS and rename the columns for clarity. 
+# Collect information from SDWIS and rename the columns for clarity. 
 # Note that system ownership was not used in the analysis.
 
 fips_cn15.3 <- fips_cn15 %>%
@@ -196,7 +199,7 @@ dat_ucmr3 <- main %>%
 # colnames(dat_ucmr3)
 # summary(dat_ucmr3)
 
-# Last restriction ----------------------------------------------------------
+# Restricting to systems with MDI data -------------------------------------------------------
 
 # This line produces the final dataset used in later scripts. It restricts 
 # to systems that do not have missing data for MDI. Note that in later analyses, 
@@ -215,8 +218,6 @@ dat_clean <- dat_ucmr3 %>% filter(!is.na(mdi_rate))
 # write.csv(dat_clean, paste0("processed/main-ucmr3-dataset-processed_", Sys.Date(), ".csv"))
 
 # ARCHIVE -----------------------------------------------------------------
-
-# #+        
 # 
 # dat_ucmr3
 # 

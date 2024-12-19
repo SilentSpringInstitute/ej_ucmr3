@@ -8,8 +8,8 @@
 # TABLE 2. Baseline characteristics of public water systems -------------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# Categories (first column): 
-#   * Overall (total pool of 4808 US PWSs, excluding tribal/territory systems)
+# Grouping types of UCMR3 systems (appears in the first column of the table in this order): 
+#   * Overall (total N=4815 US PWSs)
 #   * Systems that detected a target contaminant 
 #   * Systems that did not detect a target contaminant 
 #   * Systems that exceeded a health-reference conc for PFOA, PFOS, 1,4-dioxane, or 1,1-DCA
@@ -20,10 +20,11 @@
 #   * Surface water (SW) systems 
 #   * Systems that use GW under the influence of SW or a combination of GW/SW sources (MIX) 
 # 
-# Headings (8 columns) are: 
-#   * Total population served (from SDWIS)
-#   * Percent of systems with any target contaminant detects
-#   * Percent of systems with any exceedance of a health-based reference conc for 
+# Variables of interest (2nd-9th columns) are: 
+#   * Number of systems
+#   * Total population served (sum of reported populations from SDWIS data)
+#   * Proportion of systems with any target contaminant detects
+#   * Proportion of systems with any exceedance of a health-based reference conc for 
 #       PFOA, PFOS, 1,4-dioxane, or 1,1-DCA.
 #   * Mean (and std. deviation) number of samples collected during the UCMR 3 
 #   * Median (and Q1-Q3) percent Hispanic among counties served 
@@ -31,10 +32,10 @@
 #   * Median (and Q1-Q3) percent deprived among counties served 
 #   * Median (and Q1-Q3) percent urban among counties served
 
-# start here: 
+# Start here (if not already run; left un-commented to source this script independently):
 source("1_combine_process.R")
 
-# stopifnot(nrow(dat_clean)==4808) 
+# stopifnot(nrow(dat_clean)==4808) # this was increased when updating MDI to 2010-2014 averages
 stopifnot(nrow(dat_clean)==4815) # total number of systems in the study
 
 # str(dat_clean)
@@ -50,9 +51,9 @@ calc_and_format_quantiles <- function(col){
 
 # Overall summary ---------------------------------------------------------
 
-# Note: In the line that adds up the total number of population served, 
-# na.rm=T is necessary since 5 systems do not have population served counts from 
-# SDWIS and was coded as "NA".
+# Note: In line 61, adding up the total number of population served required 
+# na.rm=T. 5 systems do not have population served counts from 
+# SDWIS and were coded as "NA" to denote missingness.
 
 ore <- dat_clean %>%
   summarise(n = n(), 
@@ -65,14 +66,14 @@ ore <- dat_clean %>%
             median_deprived = calc_and_format_quantiles(mdi_rate), 
             median_urban_household = calc_and_format_quantiles(perc_urban))
 
-# checks 
+# checks with consistency
 # median(dat_clean$perc_hisp_any); IQR(dat_clean$perc_hisp_any)
 # median(dat_clean$perc_black_nohisp); IQR(dat_clean$perc_black_nohisp)
 # median(dat_clean$mdi_rate); IQR(dat_clean$mdi_rate)
 # median(dat_clean$perc_urban); IQR(dat_clean$perc_urban)
 
-# The chunk below groups by one of the variables in the vector my_vars, then calculates each of the 
-# headings (total population served, median demographics, etc.). Returns a list.
+# Lines below groups by variables in the vector my_vars and does the 
+# same operations as the lines above and for different groupings (eg small systems only). 
 
 tab <- list()
 

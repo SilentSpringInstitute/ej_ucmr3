@@ -1,25 +1,35 @@
 # DATE STARTED: 2024-06-28
 # AUTHOR: Aaron Maruzzo
-# PURPOSE: Explore distribution of UCMR3 system types (eg CWS/NTNCWS)  
+# PURPOSE: Compare UCMR3 systems to SDWIS systems (eg by CWS/NTNCWS status)  
 # LATEST REVISION: 2024-11-12
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# Supplemental Table 1. Distribution of systems by system type according to SDWIS
+# Supplemental Table 1. Distribution of systems by system type
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-# Systems were classified by system size (depending on size of service population) and 
-# by system type (depending on the nature of service populations). Systems 
-# were classified in SDWIS, not the UCMR. System types were either community water 
-# systems (CWS), transient non-community water systems (TNCWS), or 
-# non-transient non-community water systems (NTNCWS).
 # 
-# We searched for system types for 4808 systems based on active systems listed in SDWIS on 2013 quarter 4: 
+# Goal is to measure differences in the representation of the UCMR3 systems 
+# compared to US water systems. By design, water systems in the UCMR3 differ 
+# by size. Large systems are overrepresented in the UCMR
+# even though large systems are not the most prevalent type of 
+# water systems (most WSs are small).
+# We also looked for differences by system type.
+#
+# Systems were classified by system size (defined by size of customer base) and 
+# by system type (defined by the nature of its customers). System type 
+# were classified in SDWIS, not the UCMR. Size was classified in both 
+# SDWIS and UCMR. System types were either community water 
+# systems (CWS), transient non-community water systems (TNCWS), or 
+# non-transient non-community water systems (NTNCWS). 
+#
+# We decided on using the size categories reported by each database (results
+# in some minor differences).
+# 
+# We searched for system types WSs listed as active systems on 
+# 2013 quarter 4 in SDWIS on 6/24/24: 
 # https://sdwis.epa.gov/ords/sfdw_pub/r/sfdw/sdwis_fed_reports_public/200
-# and compared the breakdown of CWS/TNCWS/NTNCWS by size among systems 
-# in the UCMR3 and systems overall. Original files are available upon request. 
 
-# start here: 
+# Start here (if not already run):
 # source("1_combine_process.R")
 
 # Load SDWIS data ---------------------------------------------------------
@@ -38,13 +48,13 @@ stopifnot(nrow(sdwis2013_clean)==150332) # total number of water systems
 
 # head(sdwis2013_clean)
 
-# One system was not found in SDWIS ("MS0130025"). This system was classified
-# as a community water system (CWS) serving 492 people according to the 
-# other SDWIS data file used in previous scripts. According to SDWIS this 
-# system was inactive during the time period. Bind a new row manually for 
+# After checking if all UCMR3 systems were in this dataset, I found 
+# that one system was not found in SDWIS downloaded file ("MS0130025"). This system was classified
+# as an inactive community water system (CWS) serving 492 people. Bind a new row manually for 
 # this one system.
 
 setdiff(dat_clean$PWSID, sdwis2013_clean$pws_id)
+
 newrow <- allsdwis3 %>%
   filter(PWSID == "MS0130025")
 
@@ -60,11 +70,13 @@ sdwis <- sdwis2013_clean %>%
          population_served_count = as.numeric(population_served_count)) %>%
   bind_rows(newrow1)
 
-# Categorize the size of systems. Systems were defined as large if they 
-# were classified as large systems in the UCMR or, if not, served
-# greater than 10,000 customers. Small systems were either classified as 
-# small systems in the UCMR or, if not, served equal to or less than 
-# 10,000 customers. 
+# Create separate datasets: one that has the UCMR systems only, 
+# and another that includes all systems from the SDWIS download. 
+# Classify the size of systems in the SDWIS dataset only. Systems were defined as large if they 
+# classified by size during the UCMR. Systems were defined as large 
+# if they serve greater than 10000 people, and small if they serve 10000 people
+# or fewer. All water systems in the SDWIS data had a population served count, 
+# so all water systems were classified with no missing levels.
 
 sdwis1 <- sdwis %>%
   filter(pws_id %in% dat_clean$PWSID) %>%
@@ -82,20 +94,25 @@ stopifnot(nrow(filter(sdwis2, size=='oops'))==0)
 
 # Count -------------------------------------------------------------------
 
-# Calculate total number of systems in SDWIS and UCMR3. The UCMR3 total must 
-# be the same as in the paper (n=4808).
+# Find total number of systems in SDWIS and UCMR3. The UCMR3 total must 
+# be the same as in the paper (n=4815). Then combine together as a small 
+# data table.
 
 tot1 <- sdwis1 %>%
   summarise(n_ucmr3 = n(), 
-            size = "total", pws_type = "total")
+            size = "total",
+            pws_type = "total")
+
+stopifnot(tot1$n_ucmr3==4815)
 
 tot2 <- sdwis2 %>% 
   summarise(n_sdwis = n(), 
-            size = "total", pws_type = "total")
+            size = "total", 
+            pws_type = "total")
 
 tot3 <- tot1 %>% left_join(tot2)
 
-# Calculate number of systems stratified by size and PWS type.
+# Repeat operation grouped by size and PWS type together.
 
 sdwis3 <- sdwis1 %>%
   group_by(size, pws_type) %>%
@@ -110,7 +127,7 @@ tab1 <- tab %>% mutate(n_ucmr3 = replace_na(n_ucmr3, 0))
 
 tab1
 
-# Calculate number of systems stratified by PWS type only.
+# Repeat operation by PWS type only.
 
 sdwis5 <- sdwis1 %>%
   group_by(pws_type) %>%
