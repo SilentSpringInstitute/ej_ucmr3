@@ -4,7 +4,7 @@
 # LATEST REVISION: 2024-11-13
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
-# Start here:
+# Start here (if not already run):
 # source("1_combine_process.R")
 
 library(corrplot)
@@ -16,15 +16,15 @@ library(RColorBrewer)
 
 # This script calculated correlation coefficients between pairs of variables 
 # used in multiple regression models. The results of this script 
-# were provided in the supplement as a figure (correlelogram). We used 
-# Spearman's rank correlation to determine correlation coefficients and reported
-# coefficients in the figure.
+# were provided in the supplement as a correlelogram. 
+# Spearman's rank correlation determined correlation coefficients depicted
+# in the figure.
 # 
 # Warning: This script autosaves a plot with appropriate margins to a folder 
 # called "outputs" in the working directory. The plot is not visible in the 
 # console otherwise. 
 #
-# The variables were:
+# The variables tested were:
 #  * % Hispanic, 
 #  * % NH Black,
 #  * % deprived 
