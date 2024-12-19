@@ -1,10 +1,13 @@
 # DATE STARTED: 2023-03-14
 # AUTHOR: Aaron Maruzzo
-# PURPOSE: Conduct t-tests for tables and figures
+# PURPOSE: Test for differences in demographic levels among counties
+#   served by the UCMR3 system and systems that detected a target contaminant
 # LATEST REVISION: 2024-11-12
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
-# start here: 
+# Beginning main statistical testing phase 
+
+# Start here (if not already run; left un-commented to source this script independently):
 source("1_combine_process.R")
 
 library(tidyverse)
@@ -16,28 +19,35 @@ library(ggh4x)
 # Overview ----------------------------------------------------------------
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# This script created two figures in the paper. Figure 1 is a bar plot of 
-# the average demographic characteristic of counties, stratified by whether 
-# or not the county was linked to an industrial source of unregulated 
-# contaminants. Figure 2 is a bar plot that compared average 
-# demographics between systems that detected one or more unregulated contaminant
-# versus not, and between systems that exceeded one or more health-reference
-# concentration for PFOA, PFOS, 1-4-dioxane, or 1,1-dichloroethane, versus not.
-# The main demographic characteristics of interest were % Hispanic, % non-Hispanic Black, 
-# % deprived, and % urban. Potential industrial sources included the presence of a facility 
-# that reported emissions of 1,4-dioxane, a facility that reported HCFC-22 or CFC-12
-# emissions, or a facility that reported chlorinated solvent emissions. 
-# Potential sources of PFAS include the presence of a PFAS airport, military 
-# fire-training area (MFTA), or an EPA stewardship site.
+# This script created two figures and two supplemental tables. 
 # 
-# We used unequal variance t-tests to compare averages between groups. We 
-# reported averages and the results of t-tests in the supplement. Code in this 
-# script produced tables in the supplement.
-#
-# The script above downloads processed data. It sources the script that loads the original 
-# UCMR3 dataset into the working environment (1__ucmr3_process.R) as well as 
-# various county-level demographic datasets (1__demo_process.R). See original 
-# scripts for further info. 
+# Figure 1
+# Bar plot of average demographic level of n=1720 counties by whether 
+# or not the county was linked to an industrial source of unregulated 
+# contaminants. Demographic terms and industrial source linkages defined below.
+
+# Figure 2 
+# Bar plot of average level of n=4815 (or so) water systems 
+# by two groups: whether or not it was contaminated with any target contaminant 
+# and whet, and whether or not it exceeded one or more health-reference
+# concentration for PFOA, PFOS, 1-4-dioxane, or 1,1-dichloroethane.
+
+# Demographic levels tested
+# % Hispanic, % non-Hispanic Black, % deprived, and % urban
+# for supplemental analysis: % uninsured, % homeownership, and % poverty
+
+# Potential industrial sources 
+# Counties or water systems were tested if they were linked to a potential 
+# industrial source. Each listed source was evaluated separately.
+# Included the presence of 
+# - any facility that reported 1,4-d, CFC, or chlorinated solvents
+# - a facility that reported emissions of 1,4-dioxane, 
+# - a facility that reported HCFC-22 or CFC-12 emissions
+# - a facility that reported chlorinated solvent emissions
+# - a facility associated with PFAS emissions
+# 
+# Figures represented results from unequal variance t-tests (alpha=0.05). 
+# Table results of t-tests are in the supplement.
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Counties served by water systems in the UCMR3 -------------------------------
@@ -59,33 +69,39 @@ library(ggh4x)
 #  * Percent of homeownership (for sensitivity)
 
 # Start with data frame object "fips_cn15."
-# This object comes from "1__demo_process.R". See script for further info. 
-# This object is a linked dataset that combined water systems to the counties served. 
-# Each row should be distinct combination of a system and a county. For each pair, the dataset  
-# has columns with the demographics of interest, with the exception of 
+# 
+# fips_cn15
+# - object comes from "1__demo_process.R"
+# - dataset that linked water systems to the counties served
+# - contains data for systems that were NOT part of the UCMR3
+# - does not contain binary variable that combined across 
+#   different PFAS sources (MFTA, airport, and industry together).
+#
+# Each row should be distinct combination of a system and a county.
+# For example, Calhoun County, Alabama has >=1 system.
+# For each pair, the dataset has columns with the demographics of interest, with the exception of 
 # percent homeownership. It also has columns of binary variables (prefix "bin_") 
-# indicating the presence of potential sources. Because fips_cn15 links ALL systems 
-# downloaded from SDWIS, we first restrict the dataset to include only 
-# systems that are part of the analysis.
+# indicating the presence of potential sources. 
 
-head(fips_cn15)
-
-# Rename "GEO.id2" to "county_id."
+# Restrict data to include only systems that are part of the analysis.
+# Rename "GEO.id2" to "county_id" for clarity
+# Calculate percent homeownership
 
 pwsid_county_link <- fips_cn15 %>% 
   filter(PWSID %in% dat_clean$PWSID) %>% 
   rename(county_id = GEO.id2) %>%
   mutate(perc_hmown = 100*owned.house/all.house14)
 
-# Check for uniqueness.
+# Check for uniqueness of combinations of system ID and counties (one row per combo).
+# Counties were duplicated in the data since it can match with many systems. 
 
 stopifnot(nrow(pwsid_county_link %>% count(PWSID, county_id) %>% filter(n > 1))==0)
 
-# Counties were duplicated in the data since it can match with many systems. 
-# For example, Calhoun County, Alabama has 4 different water systems that 
-# sampled for target contaminants in the UCMR3.
-# Use distinct() to capture unique combinations of county IDs, the demographic
+# Since we only want a data with just counties, 
+# use distinct() to capture unique county IDs and their demographic
 # variables of interest, and the presence of potential sources.
+# Check for duplicates. Each row is one unique county. 
+# Check for missing data. 
 
 county_dat <- pwsid_county_link %>% 
   distinct(county_id,
@@ -97,14 +113,14 @@ county_dat <- pwsid_county_link %>%
            n_MFTA, n_airports, src_epa_present) 
 county_dat
 
-# Check for duplicates. Each row is one unique county. 
 stopifnot(nrow(county_dat) == length(unique(county_dat$county_id)))
 
-# Check for missing data. 
 stopifnot(county_dat %>% filter(if_any(everything(), is.na)) %>% nrow() == 0)
 
 # How many counties were matched to a UCMR 3 PWS overall? 1720 counties. 
 nrow(county_dat)
+# head(county_dat, n=25)
+
 county_dat %>%
   group_by(n_fac_any > 0) %>%
   summarise(n=n(), 
@@ -112,8 +128,6 @@ county_dat %>%
 
 county_dat %>%
   summarise(n=n(), mean=mean(perc_hisp_any))
-
-colnames(county_dat)
 
 # Create a new single column variable indicating whether either an MFTA facility, 
 # AFFF-certified airport, or an EPA stewardship facility was present in the 
