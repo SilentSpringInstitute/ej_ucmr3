@@ -1,8 +1,8 @@
-# ej_ucmr3
+# Socioeconomic disparities in exposures to PFAS and other unregulated industrial drinking water contaminants in U.S. public water systems
 
-Code associated with the UCMR3 paper entitled "Socioeconomic disparities in exposures to PFAS and other unregulated industrial drinking water contaminants in U.S. public water systems"
+## README file
 
-Libraries used 
+## Libraries used 
   * tidyverse
   * janitor
   * readxl
@@ -16,13 +16,17 @@ Libraries used
   * broom.mixed
   * margins
 
+## Organization
 Scripts in this repo were grouped into series and intended to run in order (series 1->4). 
 
-Outputs were saved in a folder ("results/") created in a local directory. 
+## Data inputs
+Inputs were downloaded from public databases from various US EPA and US Census Bureau websites from 2017-2024. Input files exceeded repo size limitations and are available upon request.
 
-**Note: "1_combine_process.R" creates a data frame object called "dat_clean" that is used in subsequent series (2-4). "dat_clean" consists of 4815 rows (total number of water systems) and multiple columns corresponding to each system's results (eg, detection of any PFAS, "det_pfas", response: 1/0) and a summary profile of the county (or counties) they serve (eg, % Hispanic, response: continuous). 
+Raw data were cleaned and combined in "1_combine_process.R". 
+Clean data were used in subsequent series (2-4). 
+Clean data consisted of 4815 systems (rows) and information about the counties served and UCMR3 results (various columns). 
 
-"1_combine_process.R" must be sourced in series 2-4.
+## Description of series
 
  - Series 1: processing scripts.
 
@@ -30,12 +34,12 @@ Scripts compiled downloaded datasets of results from the Third Unregulated Conta
 
  - Series 2: univariate analyses.
 
-Scripts include code that calculated detection frequencies (Table 1) and characterized baseline characteristics of water systems (Table 2). Script 2_pws_compare_SDWIS compared distributions of large and small systems in the UCMR3 with SDWIS systems by system type (Table S1). The analysis on US tribes and territories (Table S10-S11) is also is in this series.
+Scripts calculated detection frequencies (Table 1) and defined baseline characteristics of water systems (Table 2). In addition, script 2_pws_compare_SDWIS.R compared proportions of large and small systems in the UCMR3 with SDWIS systems by system type (Table S1). Script 2_tribes_territories.R looked at US tribes and territories (Table S10-S11).
 
  - Series 3: bivariate analyses. 
 
-Scripts include code used to compare the average demographic measures between counties with and without point sources (Figures 2) and average demographic measures between systems with and without detections (Figure 3). Script 3_bivar_hisp_US_regions.R preliminarily assessed differences in demographics and point sources by US regions (mentioned in discussion). Script 3_correlation.R determined correlations between covariates used in regression models (Figure S1).
+Scripts compared average demographic levels between counties with and without point sources (Figures 2) and average demographic measures between drinking water systems with and without detections (Figure 3). Script 3_bivar_hisp_US_regions.R assessed differences in demographics and point sources by US regions, which were included in the Discussion section. Script 3_correlation.R determined correlations between all covariates used in regression models (Figure S1).
 
  - Series 4: multivariate (regression) analyses.
 
-Scripts estimated associations between the presence of unregulated contaminants and sociodemographic variables, PWS characteristics, and suspected sources with logistic regressions (Table 3 [crude and adjusted], Table 4 [stratified]). Supplemental sensitivity regressions and a marginal analysis were also part of the series.
+Scripts tested associations between the presence of unregulated contaminants and sociodemographic variables, PWS characteristics, and suspected sources with logistic regression models (see Table 3 [crude and adjusted] and Table 4 [stratified]). Supplemental sensitivity regression models and a marginal analysis were included.
