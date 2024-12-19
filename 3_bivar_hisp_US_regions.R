@@ -4,18 +4,17 @@
 # LATEST REVISION: 2024-11-12
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
-# start here: 
+# Start here (if not already run):
 # source("1_combine_process.R")
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #  Overview
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# The main analysis did not evaluate differences in unregulated contaminants by 
-# US region. However, there may be some effect of regional differences on 
-# observed associations between unregulated contaminants and race/ethnicity. 
+# Were there any differences in contamination or demographics by region? 
+# 
 # This script explored the distribution of unregulated contaminant detection, 
-# point sources, and demographics by region. Statistics from this script was reported
+# point sources, and demographics by region. Statistics from this script were reported
 # in the discussion. 
 
 state_region_df <- data.frame(state = state.abb, region = state.region)
@@ -27,6 +26,7 @@ rowDC <- tibble(state = "DC", region = "South")
 
 state_region_df <- bind_rows(state_region_df, rowDC)
 
+# det_any
 dat_clean %>%
   left_join(state_region_df) %>%
   group_by(region) %>%
@@ -34,6 +34,7 @@ dat_clean %>%
             sys_with_any_detect = sum(det_any == 1), 
             sys_with_any_detect_freq = 100*sys_with_any_detect/num_water_sys)
 
+# det_diox
 dat_clean %>%
   left_join(state_region_df) %>%
   group_by(region) %>%
@@ -41,6 +42,7 @@ dat_clean %>%
             sys_with_any_detect = sum(det_diox == 1, na.rm = T), 
             sys_with_any_detect_freq = 100*sys_with_any_detect/num_water_sys)
 
+# det_dca
 dat_clean %>%
   left_join(state_region_df) %>%
   group_by(region) %>%
@@ -48,6 +50,7 @@ dat_clean %>%
             sys_with_any_detect = sum(det_dca == 1, na.rm = T), 
             sys_with_any_detect_freq = 100*sys_with_any_detect/num_water_sys)
 
+# det_hcfc
 dat_clean %>%
   left_join(state_region_df) %>%
   group_by(region) %>%
@@ -55,12 +58,19 @@ dat_clean %>%
             sys_with_any_detect = sum(det_hcfc == 1, na.rm = T), 
             sys_with_any_detect_freq = 100*sys_with_any_detect/num_water_sys)
 
+# det_pfas
 dat_clean %>%
   left_join(state_region_df) %>%
   group_by(region) %>%
   summarise(num_water_sys = n(), 
             sys_with_any_detect = sum(det_pfas == 1, na.rm = T), 
             sys_with_any_detect_freq = 100*sys_with_any_detect/num_water_sys)
+
+# summary statistics of the following vars by region:
+# proportion of systems linked to a TRI facility 
+# proportion of systems that were MIX systems
+# median % hispanic, % nhb, % urban
+# average wastewater flow
 
 dat_clean %>%
   left_join(state_region_df) %>%
