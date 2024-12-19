@@ -7,6 +7,8 @@
 # start here: 
 # source("1_combine_process.R")
 
+library(broom)
+
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # US tribes and US territories
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -20,22 +22,25 @@
 # We used Fisher's Exact tests due to low numbers of detects. Results are 
 # reported in the supplement. 
 
-# Start with data frame object "dat_ucmr3." This object is the pre-processed 
-# version of "dat_clean", which was used throughout the main analysis in other scripts. The 
-# difference is that dat_ucmr3 contains data for water systems prior to 
-# removing systems with missing data. 
+# Start with data frame object "dat_ucmr3."
+# This was the pre-restriction version of "dat_clean". 
 
 str(dat_ucmr3)
+head(dat_ucmr3)
+setdiff(dat_ucmr3, dat_clean)
 stopifnot(nrow(dat_ucmr3)==4923)
 
 # Count the number of systems in tribes and territories overall. Check  if 
 # all these systems collected samples for target contaminants.
+
+nrow(setdiff(dat_ucmr3, dat_clean))
+# Total: 108 systems
+# 
+# 3 PR systems never collected samples for target contaminants (were NAs in "det_any" and corresponding "det_").
 #
-## Total: 108 systems
-##  Note: 3 Puerto Rico systems never collected samples for target contaminants.
-## Total, excluding systems without samples: 105 systems. 
-## Most systems (69 out of 105) were in Puerto Rico. There was a total of 76 
-## systems serving US territories in the UCMR3 and 29 systems serving tribal areas.
+# N = 105 systems serving tribes and territories
+# Most systems were in Puerto Rico (69 out of 105). There was a total of 76 
+# systems serving US territories in the UCMR3 and 29 systems serving tribal areas.
 
 dat_tt <- dat_ucmr3 %>% filter(state_status %in% c("tribe", "territory"))
 dat_tt2 <- dat_tt %>% filter(!is.na(det_any))
@@ -66,7 +71,7 @@ det_freq_tt <- dat_tt3 %>%
 
 # Calculate the number of systems in the U.S. and D.C. that detected a 
 # target contaminant. Repeat for all six outcomes. 
-# Note: should be the same frequencies reported in Table 1.
+# Note: same frequencies reported in Table 1.
 
 det_freq_main <- dat_clean %>% 
   pivot_longer(cols = c(starts_with("det_"), "viol_any"), 
@@ -81,8 +86,8 @@ det_freq_main <- dat_clean %>%
 
 det_freq_maintt <- bind_rows(det_freq_main, det_freq_tt)
 
-# For statistical tests (Exact tests), create a data frame object that 
-# has all US PWSs. This is exactly the same as dat_ucmr3.
+# For statistical tests (Exact tests), create a data frame that 
+# has all US PWSs. This is identical to dat_ucmr3.
 
 dat_tt_withUS <- dat_clean %>% 
   bind_rows(dat_tt) %>%
@@ -93,7 +98,7 @@ setdiff(dat_ucmr3, dat_tt_withUS %>% select(-state_status_2))
 table(dat_tt_withUS$state_status_2)
 
 # Conduct Fisher's Exact tests. Test for differences in detection frequencies 
-# between US (main) systems versus excluded systems (tribes and territories). 
+# between US (main) systems versus excluded systems (tribes and territories combined). 
 # Alpha = 0.05. n1=4815 and n2=108.
 
 exact_results <- dat_tt_withUS %>%
@@ -132,24 +137,32 @@ exact_results3 <- det_freq_maintt %>%
 #                  Sys.Date(), ".csv"))
 
 
-# Over-representation analysis -------------------------------------------------
+# Disproportionality -------------------------------------------------
 
-# Over-representation analysis looks at the proportion of water systems in US tribes and 
-# territories among the overall population (UCMR3 systems) and compares
-# them to the proportion of systems in US tribes/territories among 
+# Compares proportions of systems in the UCMR3 to proportions of systems 
+# with contamination.  
+# % of water systems in US tribes among all 4923 UCMR3 systems 
+# % of water systems in territories among all 4923 systems 
+# % of water sytems in US mainland and DC among all 4923 systems 
+# and compares them to the proportion of systems among 
 # systems that detected an unregulated contaminant.
+# Small differences observed.
 
 # function 
 make_clean_value <- function(n, freq){paste0(n, " (", freq, ")")}
 
-# occurrence in UCMR3 dataset
+# Proportion in UCMR3 dataset
+# n's are consistent with previous runs. 
+# n=4815 US mainland and DC systems 
+# n=79 territory systems 
+# n=29 tribal systems
 overall_UCMR <- dat_tt_withUS %>% 
   count(state_status) %>%
   mutate(total = sum(n), freq = signif(100*n/total, 2)) %>%
   mutate(overall_prevalence = make_clean_value(n, freq))
 overall_UCMR
 
-# occurrence among PWSs with detections
+# Proportion among PWSs with detections
 prev_among_detected <- dat_tt_withUS %>%
   select(PWSID, det_dca, det_diox, det_pfas, det_hcfc, state_status, state_status_2) %>%
   pivot_longer(cols = starts_with("det_"), names_to = "chemical", values_to = "value") %>%
