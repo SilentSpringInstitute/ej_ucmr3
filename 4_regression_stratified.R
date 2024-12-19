@@ -1,6 +1,6 @@
 # DATE STARTED: 2021-07-06
 # AUTHOR: Amanda Hernandez, Jahred Liddie
-# PURPOSE: Conduct adjusted regression, stratified by system size
+# PURPOSE: Test associations stratified by system size
 # LATEST REVISION: 2024-11-12 
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
