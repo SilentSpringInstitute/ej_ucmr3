@@ -5,7 +5,7 @@
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
 library(tidyverse)
-library(janitor) # for clean_names()
+library(janitor) # for clean_names() function
 library(readxl)
 
 options(stringsAsFactors = FALSE)
@@ -19,20 +19,23 @@ options(stringsAsFactors = FALSE)
 # Overview ----------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# This script downloads various county-level data and processes them prior to linking
-# them to water systems in a later script ("1_combine_process.R"). Data sets 
-# were downloaded from online public databases in 2020. Copies of the original 
-# input files are available upon request. County-level data included 
-# race/ethnicity and socioeconomic variables from 2010-2014 American Community Survey (ACS),
-# deprivation rates and urbanicity from the U.S. Census Bureau, wastewater treatment 
-# plants and effluent flow from the US EPA 2012 EPA Clean Watersheds Needs Survey, 
-# select industrial facilities from the Toxics Release Inventory, PFAS point 
-# sources identified in Hu et al. (2016) (https://doi.org/10.1021/acs.estlett.6b00260), 
-# and public water system characteristics from US EPA Safe Drinking Water
-# Information System Federal Reporting System. Not all variables compiled in 
-# the following script was used in subsequent analyses and was an artefact of 
-# previous EJ analyses. 
+# This script downloads various county-level data. These data were cleaned and 
+# combined into a single dataset that represents characteristics for US counties. 
+# Linkages between this dataset to water systems occurs in a later script ("1_combine_process.R"). 
 # 
+# Data sets were downloaded from online public databases between 2016-2024.
+# Raw input files exceeded file size limitations on Github and are available upon request.
+# Data were stored in directory folders named "raw/" and "clean/". 
+
+# Note: Not all variables compiled in this following script were used in subsequent analyses. 
+# - County-level demographics data, including race/ethnicity and 
+# univariate SES variables, were from 5Y 2010-2014 American Community Survey (ACS).
+# - Deprivation rates (multiple deprivation indeces) and urbanicity from the U.S. Census Bureau. 
+# - Wastewater treatment plant location and reported flows were from the US EPA 2012 EPA Clean Watersheds Needs Survey, 
+# - Selected industrial facilities were from the Toxics Release Inventory. 
+# - PFAS point sources were identified in Hu et al. (2016) (https://doi.org/10.1021/acs.estlett.6b00260), 
+# - Public water system characteristics from US EPA Safe Drinking Water
+# Information System Federal Reporting System. 
 
 # Function ---------------------------------------------------------------
 
@@ -408,7 +411,7 @@ tri_basic14 <- read_csv("raw/TRI/TRI_2014_US.csv") %>%
   mutate(`10. BIA` = as.numeric(`10. BIA`))
 tri_basic15 <- read_csv("raw/TRI/TRI_2015_US.csv") %>% 
   mutate(`9. ZIP` = as.character(`9. ZIP`), 
-         `15. PARENT CO DB NUM` = as.character(`15. PARENT CO DB NUM`)) # added AM 11-25-22
+         `15. PARENT CO DB NUM` = as.character(`15. PARENT CO DB NUM`)) 
 
 tri_basic <- bind_rows(tri_basic10, tri_basic11, tri_basic12, tri_basic13, tri_basic14, tri_basic15) 
 colnames(tri_basic) <- gsub("\\d+\\.\\d+ - ", "", colnames(tri_basic))
@@ -669,10 +672,6 @@ cn14.1 <- cn14 %>%
   left_join(landarea2)
 
 cn14.2  <- cn14.1 %>%
-  # select(-`Standard Error`, 
-  #        -`MDI rate`,
-  #        -GEO.id, 
-  #        -county) %>%
   mutate_at(vars(matches("src_|bin_|n_")), 
             ~ifelse(is.na(.), 0, .)) 
 
