@@ -4,22 +4,24 @@
 # LATEST REVISION: 2024-11-12 
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
+# Start here (if not already run):
+# source("1_combine_process.R")
+
 # load libraries 
 library(margins)
 library(lme4)
 
-# create main datasets
-# source("2. create main datasets.R")
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Overview ----------------
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# Estimating marginal effects (Jahred's method) ----
-
-# The regression in the manuscript is based on a logistic mixed-effects model, 
-# using state as a random effect (intercept). Reviewer asked us to estimate 
-# the effect of % Hispanic, over some interesting range, on the probability on 
-# unregulated contaminant detection. There were 3 interesting ranges: the 
-# range from maximum to minimum, a one standard deviation increase, and the 
+# The regression in the manuscript is based on a logistic mixed-effects model.
+# Reviewer asked to estimate the effect of % Hispanic on the probability on 
+# unregulated contaminant detection over some "interesting range" of 
+# % Hispanic. 3 ranges tested: from min to max, a one standard deviation increase, and the 
 # interquartile range. 
-# 
+
+# Estimating marginal effects using det_any as a continuous predictor ----
 # We estimated marginal effects by running the model as a continuous variable 
 # and using the coefficients (which represent the change in the probability of 
 # detection per unit increase). We multiplied the coefficients by the 
@@ -36,6 +38,7 @@ q1_hisp <- quantile(dat_clean$perc_hisp_any, 0.25) #3.6% - same as in paper
 q3_hisp <- quantile(dat_clean$perc_hisp_any, 0.75) #18.9% - same as in paper
 q3_hisp - q1_hisp
 
+# model selected: any detection of target contaminants ("det_any")
 mod_jl <- lmer("det_any ~ perc_hisp_any + perc_black_nohisp + mdi_rate + 
              perc_urban + size + pws_type + n_samples + adj_wwtp_flow + n_fac_any_bin + 
              (1|state)",

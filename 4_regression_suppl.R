@@ -1,10 +1,10 @@
 # DATE STARTED: 2023-09-17
 # AUTHOR: Aaron Maruzzo
-# PURPOSE: Conduct regressions included in the supplement (except fully adjusted models)
+# PURPOSE: Conduct sensitivity analyses 
 # LATEST REVISION: 2024-11-12 
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
-# start here:
+# Start here (if not already run):
 # source("1_combine_process.R")
 # source("4__regressions_main.R")
 
@@ -18,20 +18,21 @@ library(gtools)
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # This script produces regression tables included in the supplement. 
-# 
-# The first section conducts logistic mixed-effect models without certain point 
+# Fewer comments in this script since its organization is similar to "4__regressions_main.R"
+
+# == Sensitivity check 1: with and without point source terms == 
+# Conducts logistic mixed-effect models without certain point 
 # source terms and wastewater. The aim was to compare how robust associations 
 # were between the outcome and explanatory variables with and without 
-# facilities and wastewater as explanatory variables. Specifically, since facility 
+# facilities and wastewater as explanatory variables. Since facility 
 # siting could be driven by race/ethnicity and SES, including point sources 
 # as terms in the model may be attenuating the relationship between demographics
 # and contaminant detections. This model was compared with results from the 
 # adjusted model. 
 
+# == Sensitivity check 2: regressions with different SES variables (not MDI) == 
 # The second section conducts logistic mixed-effect models using socioeconomic 
 # (SES) variables other than percent deprived (or MDI). 
-
-# The overall structure of the script is similar to "4__regressions_main.R"
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # With and without source terms ----------------------------------------------
@@ -49,11 +50,8 @@ nested_data4supp <- dat_clean %>%
   nest() 
 
 # Define a base formula.
-# Include terms for county-level demographic variables, water system characteristics, and wastewater flow. 
-# Exclude point source terms (except for wastewater flow). 
-# 
-# The base formula was adjusted for each model according to the outcome. 
-# 
+# Include terms for county-level demographic variables and water system characteristics. 
+# Exclude point source terms. 
 # Include a state intercept term at the end of the equation.
 
 base_formula <- paste(
@@ -70,12 +68,10 @@ nested_data4supp2 <- nested_data4supp %>%
 #   select(-data) %>%
 #   view()
 
-# Create a function that conducts adjusted logistic mixed-effects models. 
-# Use tidy() to save from the broom.mixed package to clean model results as a 
-# tidy data frame object. Calculate odds ratios and 95% CI.
-# This will be used to loop over a list-column of a nested data frame.
-# As of 6/26/24, we removed percent change formatting. 
 # Note- same function as in "4__regressions_main.R"
+# Create a function that conducts *adjusted* logistic models
+# Calculate odds ratios and 95% CI.
+# This will be used to loop over a list-column of a nested data frame.
 
 run_log2 <- function(dat, formula){
   lme4::glmer(formula = formula,

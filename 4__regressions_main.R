@@ -4,7 +4,9 @@
 # LATEST REVISION: 2024-11-12 
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
-# Start here:
+# Beginning of regression modeling
+
+# Start here (if not already run):
 # source("1_combine_process.R")
 
 # for regression:
@@ -20,63 +22,83 @@ library(broom.mixed)
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # This script produced the primary regressions reported in the paper (Table 3). 
-# Crude logistic models were used to evaluate associations between 
-# contaminant detects among US public water systems in the UCMR3 and 
-# county-level demographics, water system characteristics, wastewater, and 
-# the presence of industrial and commercial sources of unregulated contaminants. There were
-# five primary outcomes of interest: detection of any target unregulated contaminant, 
-# detection of 1,4-dioxane only, detection of 1,1-DCA only, detection of HCFC-22 only, 
-# detection of PFAS only, and exceedance of any health-reference concentration for 
-# 1,4-dioxane, 1,1-DCA, PFOA, and PFOS. Outcomes and explanatory variables were pre-defined 
-# and processed in series 1 scripts in the repo. See those scripts for additional info. 
 # 
-# Adjusted models were logistic mixed-effects models using the lme4 package. 
-# Adjusted models included the same set of demographics and system characteristics 
-# into a single model for each outcome of interest. Pollution source terms, by contrast, 
-# were outcome-dependent. For models of detection of >=1 target contaminant and of 
-# exceeding >=1 health benchmark, terms for wastewater flow and the presence of any 
-# TRI facility were included. For models of chemical-specific detections, 
-# we used wastewater flow and a set of terms corresponding to each source (for example, 
-# for 1,4-dioxane, we used TRI facilities that reported 1,4-dioxane emissions, and for 
-# PFAS, we used the set of point sources reported in Hu et al. 2016).
+# == Crude models == 
+# Tested associations between contamination and several variables among 4815 PWSs.
+# 
+# == Explanatory variables (sometimes called predictors) == 
+# 15 predictors: Included county-level demographics, water system 
+# characteristics, wastewater, and the presence of industrial and commercial
+# sources of unregulated contaminants. 
 #
-# A state-specific random effect was added to each equation to account for some
-# clustering of demographics by state and to account for
-# the systems within the same state being more similar to each other than to 
-# systems in other states. 
-# 
-# Six outcomes -- 
-#
-# Y1 = detected any target chem 
-# Y2-Y5 = detection of either 1,4-d; HCFC-22; 1,1-DCA; PFAS 
-# Y6 = exceeded a health reference level
-# 
-# Explanatory variables (predictors) --
-# 
 # Demographic terms (X1-X4)
 # X1 = % Hispanic 
 # X2 = % non-Hispanic Black 
 # X3 = % urban 
 # X4 = % deprived 
 # 
-# System characteristics (X5-X7)
+# System characteristics (X5-X8)
 # X5 = system size (large or small, ref: small) 
-# X6 = source water (GW, MIX, or SW, ref: SW)
+# X6 = GW (ref: SW)
+# X7 = MIX (ref: SW)
 # X7 = Number of samples 
 # 
-# Point sources* (X8-X14*)      *model specific
-# X8 = Wastewater effluent flow (million L per km2) 
-# X9 = Any TRI facility (yes or no, ref: no) 
-# X10-14 = Any relevant pollution sources (3 types of TRI facility, MFTA, airport)
+# Point sources (X9-X15)      
+# X9 = Wastewater flow (million L per km2) 
+# X10 = relevant TRI facility present (yes or no, ref: no) 
+# X11 = 1,4-dioxane TRI facility present (yes or no, ref: no)
+# X12 = chlorinated solvent TRI facility present (yes or no, ref: no)
+# X13 = chlorofluorocarbon TRI facility present (yes or no, ref: no)
+# X14 = major industrial PFAS facility present (yes or no, ref: no)
+# X15 = AFFF-certified airports of military fire-training areas present (yes or no, ref: no)
+
+# == Outcome variables ==
+# Six outcomes: detection of any target unregulated contaminant, 
+# detection of 1,4-dioxane only, detection of 1,1-DCA only, detection of HCFC-22 only, 
+# detection of PFAS only, and exceedance of any health-reference concentration for 
+# 1,4-dioxane, 1,1-DCA, PFOA, and PFOS.
+#
+# Y1 = detected any target chem 
+# Y2-Y5 = detection of either 1,4-d; HCFC-22; 1,1-DCA; PFAS 
+# Y6 = exceeded a health reference level
+
+# Explanatory and outcome variables were defined in series 1 scripts in the repo. 
+# See scripts for more info. 
+
+# == Adjusted models == 
+# Logistic mixed-effects models
+# Tested associations between contamination and a combination of variables among 4815 PWSs, 
+# typically accounting for multiple effects combined.
+# Each adjusted model included the same set of terms for demographics and system characteristics.
+# Pollution source terms, by contrast, were outcome-dependent
+# State random intercepts included to account for state clustering
+
+# == Pollution terms == 
+# For models of system detection of >=1 target contaminant and exceeding >=1 health benchmark, 
+# terms for wastewater flow and the presence of any TRI facility were included only.
+# For chemical-specific detections, use wastewater flow and a set of
+# terms corresponding to each source (eg, 
+# for 1,4-dioxane, we used TRI facilities that reported 1,4-dioxane emissions, and for 
+# PFAS, we used the set of point sources associated with PFAS).
+
+# == Sensitivity testing == 
+# Tested the sensitivity of MDI by comparing with: 
+# X16 = % homeownership
+# X17 = % uninsured
+# X18 = % poverty
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Crude logistic models ----------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# Create a function that conducts simple logistic models. Use tidy() to save 
-# model results as a tidy data frame object. Calculate odds ratios and 95% CI.
+# == Overview note == 
+# This section divides the crude logistic models into a set of continuous 
+# predictors and a set of categorical predictors. 
+
+# Create a function that conducts crude logistic models
+# Calculate odds ratios and 95% CI.
+# 6/26/24 change-removed percent change format, so reported associations were in ORs. 
 # This will be used to loop over a list-column of a nested data frame.
-# As of 6/26/24, we removed percent change formatting. 
 
 run_log1 <- function(dat){
   glm(outcome ~ predictor, data = dat, family = 'binomial') %>% 
@@ -91,10 +113,8 @@ run_log1 <- function(dat){
     # p_stars = gtools::stars.pval(p.value))
 }
 
-# * Continuous predictors ----
-
-# Define continuous predictors. Include SES variables to examine sensitivity 
-# of the primary SES variable (ie, this list includes percent homeownership, percent uninsured, and percent poverty). 
+# Define continuous predictors
+# Included other (non-MDI) SES variables here for sensitivity testing. 
 
 continuous_pred <- c(
   "perc_hisp_any", 
@@ -108,7 +128,8 @@ continuous_pred <- c(
   "perc_pov_ppl"
 )
 
-# Prepare a nested data frame to iterate a regression function the list-column. 
+# Prepare a nested df to iterate the custom regression function 
+# over the list-column. 
 # Pivot the outcome variables and predictor variables separately, then remove 
 # unnecessary columns and nest. Count the number of systems in each data frame. 
 
@@ -212,10 +233,7 @@ crude_results_cat
 # * Combine and clean outputs --------------------------------------------------
 
 # Clean the outputs of the model runs from above. Define a function to 
-# clean model outputs. Then merge together. The resulting data frame object 
-# called "crude_results_all" removed the intercept values, and reported 
-# coefficients (and 95% CIs), standard errors, p-values, and the original 
-# names of variables. More formatting was needed to prepare for table for export.
+# clean model outputs. 
 
 clean2 <- function(dat){
   dat %>% 
@@ -230,14 +248,17 @@ clean2 <- function(dat){
     )
 }
 
-# Apply cleaning function and combine. 
+# Apply cleaning function and combine. The resulting data frame 
+# called "crude_results_all" removed the intercept values, and reported 
+# coefficients (and 95% CIs), standard errors, p-values, and the original 
+# names of variables. More formatting was needed to prepare for table for export.
 
 crcont <- clean2(crude_results_cont) %>% select(-data)
 crcat <- clean2(crude_results_cat) %>% select(-data)
 crude_results_all <- bind_rows(crcat, crcont) 
 crude_results_all
 
-# Tidy the outputs by ordering the predictors according to how it appeared 
+# Tidy the outputs by ordering the predictors according to how it appears 
 # in the paper. 
 
 TableOrder <-  c("perc_hisp_any",
@@ -264,8 +285,8 @@ crude_results_tidy <- crude_results_all %>%
   arrange(pred)
 crude_results_tidy
 
-# Prepare to export. Will need to sort the columns manually after exporting (OK as is).
-# Names are also ok as is.
+# Prepare to export. Will need to sort columns manually after exporting.
+# Names are ok and identifiable as is.
 
 crude_results_export <- crude_results_tidy %>%
   pivot_wider(id_cols = c(pred, term), 
@@ -281,10 +302,7 @@ crude_results_export <- crude_results_tidy %>%
          starts_with("det_diox"), 
          starts_with("det_dca"), 
          starts_with("det_hcfc"), 
-         starts_with("det_pfas"), 
-         # starts_with("viol_diox"), 
-         # starts_with("viol_dca"),  
-         # starts_with("viol_pfas")
+         starts_with("det_pfas")
          )
 
 # Visual inspection
@@ -299,8 +317,16 @@ crude_results_export
 # Adjusted mixed-effects logistic models ----------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# Prepare a nested data frame. Pivot the outcome variable columns only, then 
-# nest.
+# == Overview note == 
+# First, we defined specific regression equations for each outcome. Later we 
+# used the lme4 and broom.mixed packages to create a function that does
+# the regression modeling based on the defined equations. Similar to the 
+# section above, it then applies the custom function over a nested df and 
+# pulls the ORs and 95% CIs results and combines these results
+# into an export-ready table.
+
+# Prepare a nested data frame. Defined small systems as reference for system size. 
+# Pivot the outcome variable columns only, then nest.
 
 nested_df4adj <- dat_clean %>%
   select(-viol_dca, -viol_diox, -viol_pfas) %>%
@@ -317,9 +343,7 @@ stopifnot(nrow(nested_df4adj)==6)
 # Define a base formula.
 # Include terms for county-level demographic variables, water system characteristics, and wastewater flow. 
 # Exclude point source terms (except for wastewater flow). 
-# 
 # The base formula was adjusted for each model according to the outcome. 
-# 
 # Include a state intercept term at the end of the equation.
 
 base_formula <- paste(
@@ -339,18 +363,12 @@ nested_df4adj2 <- nested_df4adj %>%
   {stopifnot(nrow(filter(., my_formula == "oops"))==0); .;} %>%
   mutate(my_formula = paste(my_formula, " + (1|state)")) 
 
-# Visual check that the formulas make sense with the outcomes
+# Visual check that the formulas make sense with the outcomes and no oops
 # nested_df4adj2 %>%
 #   distinct(outcome_name, my_formula) #%>%
 #   #view()
 
 # * Function and run adjusted model -------------------------------------------
-
-# Create a function that conducts adjusted logistic mixed-effects models. 
-# Use tidy() to save from the broom.mixed package to clean model results as a 
-# tidy data frame object. Calculate odds ratios and 95% CI.
-# This will be used to loop over a list-column of a nested data frame.
-# As of 6/26/24, we removed percent change formatting. 
 
 # Required: lme4 and broom.mixed packages.
 
@@ -364,7 +382,8 @@ run_log2 <- function(dat, formula){
 # Apply the function "run_log2()" over the list-column in the nested 
 # data frame. This may take a while to run! (Estimated: 2 mins). 
 # Note that warning messages appear from 1,1-DCA model because system size 
-# was included as a variable. The models for PFAS and HCFC-22 failed to converge. 
+# was included as a variable
+# PFAS and HCFC-22 models failed to converge 
 
 adjusted_results <- nested_df4adj2 %>%
   mutate(n = map_dbl(data, ~sum(!is.na(.$outcome_value)))) %>%
@@ -380,8 +399,7 @@ adjusted_results <- nested_df4adj2 %>%
 
 # * Clean outputs --------------------------------------------------
 
-# Remove intercepts. Similar to function defined above, clean odds ratios and 
-# the 95% CIs. Stars were added to facilitate interpretation. 
+# Remove intercepts. Clean ORs and 95%CI.
 
 adjusted_results2 <- adjusted_results %>% 
   filter(!str_detect(term, "Intercept")) %>%
@@ -395,7 +413,7 @@ adjusted_results2 <- adjusted_results %>%
            format.pval(p.value, eps = 0.001, nsmall = 2, digits = 2)
   )
 
-# Tidy the outputs by ordering the predictors according to how it appeared 
+# Tidy outputs by ordering the predictors according to how it appeared 
 # in the paper. 
 
 TableOrder2 <- 

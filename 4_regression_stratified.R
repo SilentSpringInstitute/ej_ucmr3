@@ -1,10 +1,10 @@
 # DATE STARTED: 2021-07-06
 # AUTHOR: Amanda Hernandez, Jahred Liddie
-# PURPOSE: Test associations stratified by system size
+# PURPOSE: Conduct stratification
 # LATEST REVISION: 2024-11-12 
 # LATEST VERSION RUN: R version 4.2.2 (2022-10-31 ucrt)
 
-# Start here:
+# Start here (if not already run):
 # source("1_combine_process.R")
 
 # for regression:
@@ -19,19 +19,17 @@ library(broom.mixed)
 # Overview ----------------
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# This script produces the results reported in Table 4. We evaluated associations
-# between contaminant detection (any of the target contaminants) and the set of 
-# explanatory variables (county served demographics, PWS characteristics, wastewater, 
-# and any TRI facilities), after stratifying by system size. Overall, small systems face 
-# greater challenges in obtaining and maintaining water quality relative to 
-# large systems. In addition, small systems tend to serve more rural communities. 
-# We tested whether associations were consistent across models after stratification, 
-# or whether differences emerge based on system size.
-# 
-# The script uses a logistic mixed-effect model from the lme4 package. Similar to 
-# the main regression script ("4__regressions_main.R"), this script creates a nested
-# data frame with a list-column and applies a function to obtain odds ratios (95% CIs), 
-# standard errors, and p-values. 
+# This script produces the results reported in Table 4. 
+
+# Rationale for size stratification
+# UCMR3 systems were predominantly large systems by sampling design.
+# Generally, small systems face greater challenges than large systems in 
+# water quality testing and treating. In addition, small systems tend 
+# to serve more rural communities.
+
+# This script uses a logistic mixed-effect model from the lme4 package
+# This script creates a nested data frame with a list-column and applies
+# a function to obtain ORs, 95% CIs, standard errors, and p-values. 
 
 # Start ---
 
