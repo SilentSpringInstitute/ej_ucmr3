@@ -1,5 +1,3 @@
-# Socioeconomic disparities in exposures to PFAS and other unregulated industrial drinking water contaminants in U.S. public water systems
-
 ## README
 
 ## Libraries used 
