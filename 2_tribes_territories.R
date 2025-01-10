@@ -69,8 +69,8 @@ det_freq_tt <- dat_tt3 %>%
             detect = sum(value == 1),
             det_freq = 100*detect/n())
 
-# Calculate the number of systems in the U.S. and D.C. that detected a 
-# target contaminant. Repeat for all six outcomes. 
+# Calculate the number of systems in US states and DC that detected a 
+# target contaminant. Repeated for all six outcomes. 
 # Note: same frequencies reported in Table 1.
 
 det_freq_main <- dat_clean %>% 

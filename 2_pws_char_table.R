@@ -51,7 +51,7 @@ calc_and_format_quantiles <- function(col){
 
 # Overall summary ---------------------------------------------------------
 
-# Note: In line 61, adding up the total number of population served required 
+# line 62 sums the total number of population served and required 
 # na.rm=T. 5 systems do not have population served counts from 
 # SDWIS and were coded as "NA" to denote missingness.
 

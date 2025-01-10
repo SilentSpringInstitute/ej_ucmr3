@@ -28,14 +28,15 @@ options(stringsAsFactors = FALSE)
 # Data were stored in directory folders named "raw/" and "clean/". 
 
 # Note: Not all variables compiled in this following script were used in subsequent analyses. 
+# Variables included in later analyses were:
 # - County-level demographics data, including race/ethnicity and 
-# univariate SES variables, were from 5Y 2010-2014 American Community Survey (ACS).
+#     univariate SES variables, were from 5Y 2010-2014 American Community Survey (ACS).
 # - Deprivation rates (multiple deprivation indeces) and urbanicity from the U.S. Census Bureau. 
 # - Wastewater treatment plant location and reported flows were from the US EPA 2012 EPA Clean Watersheds Needs Survey, 
 # - Selected industrial facilities were from the Toxics Release Inventory. 
 # - PFAS point sources were identified in Hu et al. (2016) (https://doi.org/10.1021/acs.estlett.6b00260), 
 # - Public water system characteristics from US EPA Safe Drinking Water
-# Information System Federal Reporting System. 
+#     Information System Federal Reporting System. 
 
 # Function ---------------------------------------------------------------
 

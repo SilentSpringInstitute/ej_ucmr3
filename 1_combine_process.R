@@ -23,8 +23,8 @@ source("1__demo_process.R")
 # This script combines the outputs of 1__ucmr3_process.R and 1__demo_process.R
 # and creates a data set to use for all subsequent scripts in this repo.
 # 
-# The first script (1__ucmr3_process.R) used the UCMR3 data to define outcome variables. 
-# The second script used various public data on information about customers served by US water 
+# The first script (1__ucmr3_process.R) used UCMR3 data to define outcome variables. 
+# The second script (1_demo_process.R) used various public data on information about customers served by US water 
 # systems. Specifically, the demographic processing script loads and processes
 # county-level information about demographics like ethnicity (e.g., the percent of Hispanic 
 # residents in a county according to estimates from the 2010-2014 ACS survey).
@@ -38,7 +38,7 @@ source("1__demo_process.R")
 
 # Function --------------------------------------------------
 
-# Classifies whether a state belongs to the a state (or D.C.), U.S. territory, or a tribal area. 
+# Classifies whether a state belongs to a US state or D.C, US territory, or a tribal area. 
 
 classify_state <- function(dat, state_col) {
   dat <- dat %>%
@@ -209,6 +209,8 @@ dat_ucmr3 <- main %>%
 # 
 #       dat_ucmr3 = data without MDI restriction
 #       dat_clean = data with MDI restriction 
+# 
+# dat_ucmr3 was used primarily in 2_tribes_territories.R
 
 dat_clean <- dat_ucmr3 %>% filter(!is.na(mdi_rate))
 

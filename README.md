@@ -1,6 +1,6 @@
 # Socioeconomic disparities in exposures to PFAS and other unregulated industrial drinking water contaminants in U.S. public water systems
 
-## README file
+## README
 
 ## Libraries used 
   * tidyverse
@@ -20,7 +20,7 @@
 Scripts in this repo were grouped into series and intended to run in order (series 1->4). 
 
 ## Data inputs
-Inputs were downloaded from public databases from various US EPA and US Census Bureau websites from 2017-2024. Input files exceeded repo size limitations and are available upon request.
+Inputs were downloaded from public databases from various US EPA and US Census Bureau websites from 2017-2024. Additionals available upon request to schaider@silentspring.org.
 
 Raw data were cleaned and combined in "1_combine_process.R". 
 Clean data were used in subsequent series (2-4). 

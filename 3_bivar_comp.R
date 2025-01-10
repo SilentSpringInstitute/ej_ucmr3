@@ -27,9 +27,9 @@ library(ggh4x)
 # contaminants. Demographic terms and industrial source linkages defined below.
 
 # Figure 2 
-# Bar plot of average level of n=4815 (or so) water systems 
+# Bar plot of average demographic level of n=4815 water systems 
 # by two groups: whether or not it was contaminated with any target contaminant 
-# and whet, and whether or not it exceeded one or more health-reference
+# and what, and whether or not it exceeded one or more health-reference
 # concentration for PFOA, PFOS, 1-4-dioxane, or 1,1-dichloroethane.
 
 # Demographic levels tested
@@ -41,7 +41,7 @@ library(ggh4x)
 # industrial source. Each listed source was evaluated separately.
 # Included the presence of 
 # - any facility that reported 1,4-d, CFC, or chlorinated solvents
-# - a facility that reported emissions of 1,4-dioxane, 
+# - a facility that reported emissions of 1,4-dioxane 
 # - a facility that reported HCFC-22 or CFC-12 emissions
 # - a facility that reported chlorinated solvent emissions
 # - a facility associated with PFAS emissions
@@ -97,7 +97,7 @@ pwsid_county_link <- fips_cn15 %>%
 
 stopifnot(nrow(pwsid_county_link %>% count(PWSID, county_id) %>% filter(n > 1))==0)
 
-# Since we only want a data with just counties, 
+# Since we only want a data frame with just counties, 
 # use distinct() to capture unique county IDs and their demographic
 # variables of interest, and the presence of potential sources.
 # Check for duplicates. Each row is one unique county. 
@@ -111,10 +111,8 @@ county_dat <- pwsid_county_link %>%
            # potential sources
            n_fac_any, n_fac_diox, n_fac_cfc, n_fac_chlor_solv, 
            n_MFTA, n_airports, src_epa_present) 
-county_dat
 
 stopifnot(nrow(county_dat) == length(unique(county_dat$county_id)))
-
 stopifnot(county_dat %>% filter(if_any(everything(), is.na)) %>% nrow() == 0)
 
 # How many counties were matched to a UCMR 3 PWS overall? 1720 counties. 
